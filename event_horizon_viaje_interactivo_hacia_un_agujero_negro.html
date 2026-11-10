@@ -2139,7 +2139,7 @@
         }
 
         const THREE_PLANETS = 'https://raw.githubusercontent.com/mrdoob/three.js/r128/examples/textures/planets/';
-        function loadTextureWithFallback(urls, onLoad) {
+        function loadTextureWithFallback(urls, onLoad, onFail) {
             const list = urls.filter(Boolean);
             // Opening the file directly (file://) blocks local textures in WebGL: also try the public copy.
             urls.filter(u => u && u.startsWith(TEX)).forEach(u => {
@@ -2147,7 +2147,7 @@
                 if (/^(earth_|moon_1024)/.test(name)) list.push(THREE_PLANETS + name);
             });
             const tryAt = (i) => {
-                if (i >= list.length) return;
+                if (i >= list.length) { if (onFail) onFail(); return; }
                 textureLoader.load(list[i], onLoad, undefined, () => tryAt(i + 1));
             };
             tryAt(0);
@@ -2202,7 +2202,10 @@
 
         function createPhotorealisticPlanet(bodyId, radius = 2.5, hasAtmosphere = true) {
             const cfg = ASTRO_TARGETS[bodyId];
-            const { colorTex, bumpTex } = generateHiResPlanetaryTextures(bodyId);
+            // Real maps load first; the (slow) procedural texture is only built if they fail.
+            const useProcedural = () => generateHiResPlanetaryTextures(bodyId);
+            const { colorTex, bumpTex } = cfg.textureUrl ? { colorTex: null, bumpTex: null } : useProcedural();
+            const reliefFromMap = ['moon', 'mercury', 'mars', 'io', 'europa', 'pluto'].includes(bodyId);
 
             let mat;
             if (bodyId === 'sun') {
@@ -2215,6 +2218,7 @@
                 mat = new THREE.MeshPhongMaterial({
                     map: colorTex,
                     bumpMap: bumpTex,
+                    color: colorTex ? 0xffffff : new THREE.Color(...(cfg.atmoColor || [0.5, 0.5, 0.5])).multiplyScalar(0.55),
                     bumpScale: (bodyId === 'moon' || bodyId === 'mercury') ? 0.11 : (bodyId === 'mars' ? 0.065 : 0.012),
                     specular: new THREE.Color(bodyId === 'earth' ? 0x1c2c3c : (bodyId === 'saturn' ? 0x050505 : 0x111111)),
                     shininess: bodyId === 'earth' ? 40 : (bodyId === 'saturn' ? 3 : 6)
@@ -2229,8 +2233,23 @@
                         mat.uniforms.uHasMap.value = 1.0;
                     } else {
                         mat.map = nasaTex;
+                        mat.color.set(0xffffff);
+                        if (reliefFromMap && !mat.bumpMap) { mat.bumpMap = nasaTex; mat.bumpScale *= 0.45; }
                         mat.needsUpdate = true;
                     }
+                }, () => {
+                    // No real map reachable: build the procedural one off the critical path.
+                    setTimeout(() => {
+                        const proc = useProcedural();
+                        if (mat.uniforms && mat.uniforms.uMap) {
+                            mat.uniforms.uMap.value = proc.colorTex;
+                        } else {
+                            mat.map = proc.colorTex;
+                            mat.bumpMap = proc.bumpTex;
+                            mat.color.set(0xffffff);
+                            mat.needsUpdate = true;
+                        }
+                    }, 0);
                 });
             }
             if (cfg.nightUrl && mat.isMeshPhongMaterial) {
@@ -3907,7 +3926,7 @@
                 debrisGeo.attributes.position.needsUpdate = true;
             }
             if (targetId === 'io') ioPlumes.visible = false;
-            genesis.duration = reduceMotion.matches ? 9000 : 16000;
+            genesis.duration = reduceMotion.matches ? 7000 : 10000;
             genesis.start = performance.now();
             genesis.stepIdx = -1;
             setGenesisScale(type.mode === 2 ? 0 : 0.0001);
