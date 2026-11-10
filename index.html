@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b10">
+  <meta name="description" content="Explora planetas, estrellas y agujeros negros en Event Horizon, un laboratorio interactivo de gravedad relativista en 3D.">
+  <title>Event Horizon — El universo te espera</title>
+  <link rel="stylesheet" href="assets/inicio.css">
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="header wrap">
+    <a class="brand" href="index.html" aria-label="Event Horizon, inicio"><span class="brand-mark" aria-hidden="true">◉</span><span>EVENT HORIZON<small>LABORATORIO DE EXPLORACIÓN ESPACIAL</small></span></a>
+    <nav aria-label="Navegación principal"><a href="#destinos">Destinos</a><a href="#experiencia">La experiencia</a><a class="nav-launch" href="event_horizon_viaje_interactivo_hacia_un_agujero_negro.html">Abrir simulador <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></a></nav>
+  </header>
+  <main id="contenido">
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot"></span> MÁS ALLÁ DE LO QUE CONOCES</p>
+        <h1 id="hero-title">El universo<br>no tiene límites.<br><em>Tu curiosidad,<br>tampoco.</em></h1>
+        <p class="intro">Desde los anillos de Saturno hasta el horizonte de un agujero negro. Explora el cosmos y descubre cómo la gravedad lo cambia todo.</p>
+        <div class="hero-actions"><a class="button primary" href="event_horizon_viaje_interactivo_hacia_un_agujero_negro.html">Iniciar exploración <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></a><a class="text-link" href="#destinos">Elegir un destino <span aria-hidden="true">↓</span></a></div>
+        <p class="hero-note"><span aria-hidden="true">◎</span> Una experiencia interactiva en 3D. A tu ritmo.</p>
+      </div>
+      <figure class="cosmos">
+        <div class="coordinates" aria-hidden="true">OBJETO / 012<br><span>GARGANTÚA</span></div>
+        <svg class="black-hole" viewBox="0 0 800 800" role="img" aria-labelledby="hole-title hole-desc">
+          <title id="hole-title">El horizonte de un agujero negro</title><desc id="hole-desc">Ilustración artística de una esfera oscura rodeada por un anillo luminoso y un disco de acreción dorado.</desc>
+          <defs>
+            <radialGradient id="aura"><stop stop-color="#dc7b35" stop-opacity=".16"/><stop offset="1" stop-color="#dc7b35" stop-opacity="0"/></radialGradient>
+            <radialGradient id="void"><stop offset=".8" stop-color="#030508"/><stop offset="1" stop-color="#0b0908"/></radialGradient>
+            <linearGradient id="disk"><stop stop-color="#7c4020" stop-opacity="0"/><stop offset=".26" stop-color="#c88245"/><stop offset=".52" stop-color="#fff0ca"/><stop offset=".76" stop-color="#cb8c4b"/><stop offset="1" stop-color="#7c4020" stop-opacity="0"/></linearGradient>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>
+            <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+          </defs>
+          <circle cx="400" cy="400" r="390" fill="url(#aura)"/>
+          <g fill="none" stroke="#9bafa9" stroke-opacity=".16"><circle cx="400" cy="400" r="310" stroke-dasharray="2 10"/><circle cx="400" cy="400" r="265"/><path d="M65 400H735M400 65V735" stroke-dasharray="3 12"/></g>
+          <g transform="rotate(-23 400 400)">
+            <ellipse cx="400" cy="410" rx="328" ry="67" fill="none" stroke="url(#disk)" stroke-width="35" filter="url(#glow)"/>
+            <ellipse cx="400" cy="410" rx="328" ry="48" fill="none" stroke="url(#disk)" stroke-width="8"/>
+            <circle cx="400" cy="390" r="166" fill="none" stroke="#d38a45" stroke-width="26" filter="url(#glow)"/>
+            <circle cx="400" cy="390" r="164" fill="url(#void)" stroke="#efc28a" stroke-width="5"/>
+            <circle cx="400" cy="390" r="170" fill="none" stroke="#ffd8a4" stroke-width="6" filter="url(#soft)"/>
+            <path d="M72 410C120 484 678 484 728 410" fill="none" stroke="url(#disk)" stroke-width="18" filter="url(#soft)"/>
+            <path d="M72 410C120 468 678 468 728 410" fill="none" stroke="url(#disk)" stroke-width="5"/>
+            <path d="M80 426C180 489 631 489 720 426M100 441C210 497 612 497 700 441" fill="none" stroke="url(#disk)" stroke-width="1" opacity=".55"/>
+          </g>
+          <g fill="#d8dfdf"><circle cx="149" cy="210" r="1.5"/><circle cx="621" cy="158" r="2"/><circle cx="702" cy="574" r="1"/><circle cx="220" cy="643" r="2"/><circle cx="561" cy="691" r="1"/><circle cx="72" cy="485" r="1"/><circle cx="502" cy="98" r="1"/></g>
+        </svg>
+        <figcaption><span class="caption-line"></span><span>EL PUNTO DE NO RETORNO<small>Horizonte de sucesos · Representación artística</small></span><span class="figure-plus" aria-hidden="true">+</span></figcaption>
+      </figure>
+      <div class="hero-bottom"><span>EL ESPACIO ES EL COMIENZO.</span><a href="#destinos">DESLIZA PARA DESCUBRIR <span aria-hidden="true">↓</span></a></div>
+    </section>
+    <section class="destinations wrap" id="destinos" aria-labelledby="destinations-title">
+      <div class="section-heading"><div><p class="eyebrow">01 / ELIGE TU PRÓXIMA PARADA</p><h2 id="destinations-title">Un cosmos por descubrir.</h2></div><p>Cada destino, una perspectiva distinta.<br>¿Por dónde quieres empezar?</p></div>
+      <div class="destination-grid">
+        <a class="destination" href="event_horizon_viaje_interactivo_hacia_un_agujero_negro.html?target=saturn"><div class="card-art saturn-art" aria-hidden="true"><div class="saturn-rings"></div><div class="planet saturn"></div></div><div class="card-content"><span class="card-index">01 / SISTEMA SOLAR</span><h3>Entre planetas <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></h3><p>Acércate a Saturno, recorre sus anillos y explora nuestros vecinos cósmicos.</p><span class="card-link">Explorar planetas <span aria-hidden="true">→</span></span></div></a>
+        <a class="destination" href="event_horizon_viaje_interactivo_hacia_un_agujero_negro.html?target=gargantua"><div class="card-art singularity-art" aria-hidden="true"><div class="mini-hole"></div></div><div class="card-content"><span class="card-index">02 / GRAVEDAD EXTREMA</span><h3>Al borde del infinito <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></h3><p>Viaja hacia Gargantúa y observa los efectos de la gravedad sobre el espacio y el tiempo.</p><span class="card-link">Visitar el agujero negro <span aria-hidden="true">→</span></span></div></a>
+        <a class="destination" href="event_horizon_viaje_interactivo_hacia_un_agujero_negro.html?target=pulsar"><div class="card-art pulsar-art" aria-hidden="true"><div class="pulsar-beam"></div><div class="pulsar"></div><div class="pulsar-orbit"></div></div><div class="card-content"><span class="card-index">03 / ESTRELLAS DE NEUTRONES</span><h3>El pulso del cosmos <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></h3><p>Descubre un púlsar y compara su intensa gravedad con la de otros cuerpos celestes.</p><span class="card-link">Descubrir el púlsar <span aria-hidden="true">→</span></span></div></a>
+      </div>
+    </section>
+    <section class="experience wrap" id="experiencia" aria-labelledby="experience-title"><div class="experience-lead"><p class="eyebrow">02 / EXPLORAR ES ENTENDER</p><h2 id="experience-title">No solo lo observes.<br><em>Experimenta el universo.</em></h2><p>Un laboratorio para hacer preguntas, cambiar de perspectiva y acercarte a lo extraordinario.</p><a class="text-link" href="event_horizon_viaje_interactivo_hacia_un_agujero_negro.html">Entrar al laboratorio <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></a></div><div class="features"><article><span aria-hidden="true">◎</span><div><h3>Tú tienes el control</h3><p>Gira la cámara, ajusta la distancia y observa cada cuerpo celeste desde un nuevo ángulo.</p></div></article><article><span aria-hidden="true">⌁</span><div><h3>La relatividad, en primera persona</h3><p>Explora la dilatación temporal, el corrimiento al rojo y las fuerzas de marea con herramientas interactivas.</p></div></article><article><span aria-hidden="true">✧</span><div><h3>Una ventana a la exploración real</h3><p>Consulta imágenes y archivos de misiones de la NASA desde el propio simulador.</p></div></article></div></section>
+    <section class="closing wrap"><p class="eyebrow">TU VIAJE EMPIEZA CON UNA PREGUNTA</p><h2>¿Qué hay más allá?</h2><a class="button primary" href="event_horizon_viaje_interactivo_hacia_un_agujero_negro.html">Vamos a descubrirlo <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></a></section>
+  </main>
+  <footer class="footer wrap"><a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◉</span> EVENT HORIZON</a><p>La curiosidad es nuestra fuerza de gravedad.</p><a href="https://github.com/Yulimaria/Simulador-agujero-negro">Ver proyecto <span aria-hidden="true"><svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></a></footer>
+</body>
+</html>

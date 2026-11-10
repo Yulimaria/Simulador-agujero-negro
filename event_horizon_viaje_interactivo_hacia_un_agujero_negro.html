@@ -328,6 +328,7 @@
 
             <!-- Right Controls: NASA Live API, Ring Skim Camera, Warp Boost & Web Audio -->
             <div class="flex items-center gap-1.5 flex-wrap">
+                <a href="index.html" class="glass-hud rounded-xl p-2 sm:px-2.5 sm:py-1.5 text-singularity-cyan text-[10px] sm:text-xs font-mono hover:text-white focus:outline focus:outline-2" aria-label="Volver a la página de inicio">← <span class="hidden sm:inline">INICIO</span></a>
                 <button id="nasa-live-btn" type="button" aria-label="Fotos NASA" class="glass-hud hover:border-singularity-emerald/80 active:scale-95 transition-all duration-200 rounded-xl p-2 sm:px-2.5 sm:py-1.5 flex items-center gap-1.5 group border-singularity-emerald/40" title="Abrir Galería Oficial de Misiones NASA en Tiempo Real">
                     <span class="w-2 h-2 rounded-full bg-singularity-emerald animate-ping"></span>
                     <i data-lucide="satellite" class="w-3.5 h-3.5 text-singularity-emerald"></i>
@@ -4163,7 +4164,11 @@
         }
 
         window.onload = function () {
-            switchTarget('saturn');
+            const requestedTarget = new URLSearchParams(window.location.search).get('target');
+            const initialTarget = Object.prototype.hasOwnProperty.call(ASTRO_TARGETS, requestedTarget)
+                ? requestedTarget
+                : 'saturn';
+            switchTarget(initialTarget);
             animate();
         };
     </script>
