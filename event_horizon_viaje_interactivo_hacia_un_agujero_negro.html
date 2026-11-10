@@ -2839,7 +2839,7 @@
             } catch (err) {
                 dom.nasaApiStatus.textContent = 'NASA API: LOCAL CACHE';
                 const fallbackItem = [{
-                    imgUrl: (cfg.textureFallback && cfg.textureFallback.startsWith('http') ? cfg.textureFallback : null) || cfg.textureUrl || `https://placehold.co/800x500/05050e/00f0ff?text=${encodeURIComponent(cfg.name)}`,
+                    imgUrl: (cfg.id === 'io' ? null : cfg.textureUrl) || `https://placehold.co/800x500/05050e/00f0ff?text=${encodeURIComponent(cfg.name)}`,
                     title: `${cfg.name} — Telemetría de Misión Espacial`,
                     desc: `${cfg.summary} Radio real: ${cfg.realRadiusText} | Radio de Schwarzschild: ${cfg.rsRealText}.`,
                     center: 'NASA / JPL-Caltech',
