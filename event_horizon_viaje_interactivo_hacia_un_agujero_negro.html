@@ -446,7 +446,7 @@
                 </div>
 
                 <div class="mt-1.5 text-center font-mono">
-                    <span id="target-lock-text" class="text-[8px] sm:text-[9px] tracking-[0.12em] uppercase text-singularity-cyan/90 bg-void/80 px-2 py-0.5 rounded border border-singularity-cyan/25 shadow-lg">
+                    <span id="target-lock-text" class="inline-block max-w-[88vw] truncate align-middle text-[8px] sm:text-[9px] tracking-[0.12em] uppercase text-singularity-cyan/90 bg-void/80 px-2 py-0.5 rounded border border-singularity-cyan/25 shadow-lg">
                         OBJETIVO: SATURNO (95.16 M⊕)
                     </span>
                 </div>
@@ -2153,6 +2153,20 @@
             }
         `;
 
+        // Round, soft dot for every particle system (default GL points are squares).
+        const roundDotTexture = (() => {
+            const c = document.createElement('canvas');
+            c.width = c.height = 64;
+            const g = c.getContext('2d');
+            const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.4, 'rgba(255,255,255,0.85)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = grad;
+            g.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(c);
+        })();
+
         const ATMO_STRENGTH = { titan: 1.8, venus: 1.4, earth: 1.25, pluto: 0.7, io: 0.45, europa: 0.5, mars: 0.8 };
         const ATMO_SCALE = { titan: 1.09, venus: 1.06, pluto: 1.035, io: 1.03, europa: 1.03 };
 
@@ -2172,8 +2186,8 @@
                     map: colorTex,
                     bumpMap: bumpTex,
                     bumpScale: (bodyId === 'moon' || bodyId === 'mercury') ? 0.11 : (bodyId === 'mars' ? 0.065 : 0.012),
-                    specular: new THREE.Color(bodyId === 'earth' ? 0x335577 : (bodyId === 'saturn' ? 0x050505 : 0x111111)),
-                    shininess: bodyId === 'earth' ? 22 : (bodyId === 'saturn' ? 3 : 6)
+                    specular: new THREE.Color(bodyId === 'earth' ? 0x1c2c3c : (bodyId === 'saturn' ? 0x050505 : 0x111111)),
+                    shininess: bodyId === 'earth' ? 40 : (bodyId === 'saturn' ? 3 : 6)
                 });
             }
 
@@ -2252,8 +2266,8 @@
 
         // Solar prominences: glowing loops that slowly breathe around the limb.
         const prominenceGroup = new THREE.Group();
-        for (let i = 0; i < 9; i++) {
-            const a = (i / 9) * Math.PI * 2 + Math.random() * 0.4;
+        for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2 + Math.random() * 0.4;
             const h = 0.35 + Math.random() * 0.75;
             const curve = new THREE.QuadraticBezierCurve3(
                 new THREE.Vector3(Math.cos(a - 0.12) * 2.8, Math.sin(a - 0.12) * 2.8, 0),
@@ -2261,8 +2275,8 @@
                 new THREE.Vector3(Math.cos(a + 0.12) * 2.8, Math.sin(a + 0.12) * 2.8, 0)
             );
             const loop = new THREE.Mesh(
-                new THREE.TubeGeometry(curve, 24, 0.07 + Math.random() * 0.07, 8, false),
-                new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })
+                new THREE.TubeGeometry(curve, 32, 0.035 + Math.random() * 0.03, 8, false),
+                new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
             );
             prominenceGroup.add(loop);
         }
@@ -2312,7 +2326,8 @@
         }
         ioPlumeGeo.setAttribute('position', new THREE.BufferAttribute(ioPlumePos, 3));
         const ioPlumes = new THREE.Points(ioPlumeGeo, new THREE.PointsMaterial({
-            color: 0xffe08a, size: 0.035, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false
+            map: roundDotTexture, alphaTest: 0.01,
+            color: 0xffe08a, size: 0.06, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false
         }));
         ioMesh.add(ioPlumes);
 
@@ -2347,7 +2362,7 @@
         const uranusMesh = createPhotorealisticPlanet('uranus', 2.4, true);
         const uranusRings = new THREE.Mesh(
             new THREE.RingGeometry(3.2, 5.8, 96, 16),
-            new THREE.MeshBasicMaterial({ color: 0x7dd3fc, side: THREE.DoubleSide, transparent: true, opacity: 0.28 })
+            new THREE.MeshBasicMaterial({ color: 0x7dd3fc, side: THREE.DoubleSide, transparent: true, opacity: 0.12, depthWrite: false })
         );
         uranusRings.rotation.y = Math.PI * 0.08;
         targetGroups.uranus.add(uranusRings);
@@ -2469,7 +2484,9 @@
         const saturnIceParticles = new THREE.Points(
             ringIceGeo,
             new THREE.PointsMaterial({
-                size: 0.085,
+                map: roundDotTexture,
+                depthWrite: false,
+                size: 0.05,
                 vertexColors: true,
                 transparent: true,
                 opacity: 0.85,
@@ -2500,7 +2517,7 @@
         const jupiterSphere = createPhotorealisticPlanet('jupiter', 2.75, true);
         const magnetoTorus = new THREE.Mesh(
             new THREE.TorusGeometry(6.2, 2.2, 20, 64),
-            new THREE.MeshBasicMaterial({ color: 0xb026ff, wireframe: true, transparent: true, opacity: 0.15 })
+            new THREE.MeshBasicMaterial({ color: 0xb026ff, wireframe: true, transparent: true, opacity: 0.05, depthWrite: false })
         );
         magnetoTorus.rotation.x = Math.PI * 0.46;
         targetGroups.jupiter.add(magnetoTorus);
@@ -2509,7 +2526,7 @@
         targetGroups.pulsar.add(pulsarCore);
         const pulsarGlow = makeGlowSprite(0x7df9ff, 9, 0.9);
         targetGroups.pulsar.add(pulsarGlow);
-        const pulsarCrust = new THREE.Mesh(new THREE.SphereGeometry(1.22, 24, 24), new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.6 }));
+        const pulsarCrust = new THREE.Mesh(new THREE.SphereGeometry(1.22, 24, 24), new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.22 }));
         targetGroups.pulsar.add(pulsarCrust);
         const jetMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.38, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
         const northJet = new THREE.Mesh(new THREE.ConeGeometry(1.6, 14, 32, 1, true), jetMat);
@@ -2528,12 +2545,10 @@
 
         const horizonMesh = new THREE.Mesh(new THREE.SphereGeometry(2.0, 64, 64), new THREE.MeshBasicMaterial({ color: 0x000000 }));
         targetGroups.gargantua.add(horizonMesh);
-        const gargantuaGlow = makeGlowSprite(0xffa040, 15, 0.35);
-        targetGroups.gargantua.add(gargantuaGlow);
-        const photonSphereMesh = new THREE.Mesh(new THREE.SphereGeometry(3.0, 32, 32), new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.13 }));
+        const photonSphereMesh = new THREE.Mesh(new THREE.SphereGeometry(3.0, 32, 32), new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.05, depthWrite: false }));
         targetGroups.gargantua.add(photonSphereMesh);
         const ergoGeo = new THREE.SphereGeometry(4.4, 36, 24); ergoGeo.scale(1.28, 0.78, 1.28);
-        const ergosphereMesh = new THREE.Mesh(ergoGeo, new THREE.MeshBasicMaterial({ color: 0xffaa00, wireframe: true, transparent: true, opacity: 0.12 }));
+        const ergosphereMesh = new THREE.Mesh(ergoGeo, new THREE.MeshBasicMaterial({ color: 0xffaa00, wireframe: true, transparent: true, opacity: 0.045, depthWrite: false }));
         targetGroups.gargantua.add(ergosphereMesh);
 
         const accretionFragmentShader = `
@@ -2682,7 +2697,7 @@
         }
         particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        const starField = new THREE.Points(particleGeo, new THREE.PointsMaterial({ size: 0.16, vertexColors: true, transparent: true, opacity: 0.92 }));
+        const starField = new THREE.Points(particleGeo, new THREE.PointsMaterial({ map: roundDotTexture, size: 0.22, vertexColors: true, transparent: true, opacity: 0.92, depthWrite: false }));
         scene.add(starField);
 
         const dom = {
@@ -2977,7 +2992,7 @@
 
             const bottomHudDeck = document.getElementById('bottom-hud-deck');
             const isHudCollapsed = bottomHudDeck && bottomHudDeck.classList.contains('hidden');
-            const portraitLift = window.innerWidth < window.innerHeight ? -0.9 : 0.0;
+            const portraitLift = window.innerWidth < window.innerHeight ? -0.2 * targetZ : 0.0;
             const yOffsetTarget = isHudCollapsed ? 0.0 : (-1.05 + portraitLift + prox * 0.45);
             controls.target.set(0, yOffsetTarget, 0);
 
@@ -3746,6 +3761,7 @@
             const cfg = GENESIS[targetId];
             if (!cfg) return;
             if (genesis.active) stopGenesis();
+            if (state.currentTarget !== targetId) switchTarget(targetId);
             const type = GENESIS_TYPES[cfg.type];
             const group = targetGroups[targetId];
             genesis.scaled = group.children
@@ -3888,7 +3904,7 @@
                 prominenceGroup.children.forEach((m, i) => {
                     const s = 1 + Math.sin(elapsedTime * 0.6 + i * 1.7) * 0.08;
                     m.scale.set(s, s, 1);
-                    m.material.opacity = 0.45 + Math.sin(elapsedTime * 0.9 + i) * 0.25;
+                    m.material.opacity = 0.25 + Math.sin(elapsedTime * 0.9 + i) * 0.12;
                 });
             } else if (t === 'pulsar') {
                 pulsarGlow.material.opacity = 0.55 + Math.abs(Math.sin(elapsedTime * 6.0)) * 0.45;
