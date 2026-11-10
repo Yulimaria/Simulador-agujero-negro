@@ -1374,8 +1374,12 @@
                 const prev = this.recording;
                 if (prev) {
                     const t = this.ctx.currentTime;
-                    prev.gain.gain.cancelScheduledValues(t);
-                    prev.gain.gain.setTargetAtTime(0, t, 0.25);
+                    if (prev.gain) {
+                        prev.gain.gain.cancelScheduledValues(t);
+                        prev.gain.gain.setTargetAtTime(0, t, 0.25);
+                    } else {
+                        prev.el.volume = 0;
+                    }
                     const el = prev.el;
                     setTimeout(() => { if (this.recording !== prev) el.pause(); }, 900);
                 }
@@ -1392,14 +1396,23 @@
                     el.preload = 'auto';
                     if ('preservesPitch' in el) el.preservesPitch = false;
                     if ('webkitPreservesPitch' in el) el.webkitPreservesPitch = false;
-                    const src = this.ctx.createMediaElementSource(el);
-                    const filter = this.ctx.createBiquadFilter();
-                    filter.type = 'lowpass';
-                    filter.frequency.value = 1800;
-                    const gain = this.ctx.createGain();
-                    gain.gain.value = 0;
-                    src.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
-                    rec = { el, filter, gain, failed: false };
+                    // Opened as file:// the browser mutes local media routed through Web Audio,
+                    // so in that case the recording plays directly (volume/rate still follow telemetry).
+                    const direct = location.protocol === 'file:';
+                    let filter = null;
+                    let gain = null;
+                    if (!direct) {
+                        const src = this.ctx.createMediaElementSource(el);
+                        filter = this.ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.value = 1800;
+                        gain = this.ctx.createGain();
+                        gain.gain.value = 0;
+                        src.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                    } else {
+                        el.volume = 0;
+                    }
+                    rec = { el, filter, gain, direct, failed: false };
                     el.addEventListener('error', () => { rec.failed = true; });
                     this.recordings[targetId] = rec;
                 }
@@ -1410,10 +1423,11 @@
                     if (this.recording !== rec || !this.isPlaying) { rec.el.pause(); return; }
                     this.recordingOk = true;
                     const t = this.ctx.currentTime;
-                    rec.gain.gain.setTargetAtTime(0.9, t, 0.4);
+                    if (rec.gain) rec.gain.gain.setTargetAtTime(0.9, t, 0.4);
+                    else rec.el.volume = 0.6;
                     this.bus.gain.setTargetAtTime(0.35, t, 0.4);
                     this.updateByTelemetry(state.rs);
-                }).catch(() => { rec.failed = true; });
+                }).catch((err) => { if (err && err.name === 'AbortError') return; rec.failed = true; });
             }
 
             createLoopingNoiseBuffer() {
@@ -1685,8 +1699,12 @@
                 const prox = Math.max(0, Math.min(1, state.descentPercent / 100));
 
                 if (this.recording && this.recordingOk) {
-                    this.recording.filter.frequency.setTargetAtTime(900 + Math.pow(prox, 1.6) * 15000, now, 0.15);
-                    this.recording.gain.gain.setTargetAtTime(0.55 + prox * 0.45, now, 0.2);
+                    if (this.recording.direct) {
+                        this.recording.el.volume = Math.min(1, 0.55 + prox * 0.45);
+                    } else {
+                        this.recording.filter.frequency.setTargetAtTime(900 + Math.pow(prox, 1.6) * 15000, now, 0.15);
+                        this.recording.gain.gain.setTargetAtTime(0.55 + prox * 0.45, now, 0.2);
+                    }
                     const rate = Math.max(0.5, Math.min(1, 1 / Math.max(1, state.gamma)));
                     this.recording.el.playbackRate = rate;
                 }
@@ -2204,7 +2222,7 @@
                 });
             }
             if (cfg.nightUrl && mat.isMeshPhongMaterial) {
-                textureLoader.load(cfg.nightUrl, (nightTex) => {
+                loadTextureWithFallback([cfg.nightUrl], (nightTex) => {
                     mat.emissiveMap = nightTex;
                     mat.emissive = new THREE.Color(0xffd9a0);
                     mat.emissiveIntensity = 1.6;
@@ -2216,13 +2234,13 @@
                 enhancePlanetMaterial(mat, { detail: gasGiant ? 0.1 : 0.38, night: !!cfg.nightUrl });
             }
             if (cfg.normalUrl) {
-                textureLoader.load(cfg.normalUrl, (normTex) => {
+                loadTextureWithFallback([cfg.normalUrl], (normTex) => {
                     mat.normalMap = normTex;
                     mat.needsUpdate = true;
                 });
             }
             if (cfg.specularUrl) {
-                textureLoader.load(cfg.specularUrl, (specTex) => {
+                loadTextureWithFallback([cfg.specularUrl], (specTex) => {
                     mat.specularMap = specTex;
                     mat.needsUpdate = true;
                 });
@@ -2294,7 +2312,7 @@
             blending: THREE.AdditiveBlending,
             depthWrite: false
         });
-        textureLoader.load(ASTRO_TARGETS.earth.cloudsUrl, (cloudTex) => {
+        loadTextureWithFallback([ASTRO_TARGETS.earth.cloudsUrl], (cloudTex) => {
             earthCloudsMat.map = cloudTex;
             earthCloudsMat.needsUpdate = true;
         });
@@ -2808,7 +2826,7 @@
             } catch (err) {
                 dom.nasaApiStatus.textContent = 'NASA API: LOCAL CACHE';
                 const fallbackItem = [{
-                    imgUrl: cfg.textureUrl || `https://placehold.co/800x500/05050e/00f0ff?text=${encodeURIComponent(cfg.name)}`,
+                    imgUrl: (cfg.textureFallback && cfg.textureFallback.startsWith('http') ? cfg.textureFallback : null) || cfg.textureUrl || `https://placehold.co/800x500/05050e/00f0ff?text=${encodeURIComponent(cfg.name)}`,
                     title: `${cfg.name} — Telemetría de Misión Espacial`,
                     desc: `${cfg.summary} Radio real: ${cfg.realRadiusText} | Radio de Schwarzschild: ${cfg.rsRealText}.`,
                     center: 'NASA / JPL-Caltech',
@@ -3691,7 +3709,7 @@
             varying float vMix;
             void main() {
                 float d = length(gl_PointCoord - 0.5);
-                float soft = smoothstep(0.5, 0.0, d);
+                float soft = 1.0 - smoothstep(0.0, 0.5, d);
                 gl_FragColor = vec4(mix(uColorA, uColorB, vMix), soft * uAlpha);
             }
         `;
