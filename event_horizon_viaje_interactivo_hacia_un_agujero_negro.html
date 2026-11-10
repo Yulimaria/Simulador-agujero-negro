@@ -913,7 +913,15 @@
         const TEX = 'assets/textures/';
         const AUDIO = 'assets/audio/';
         // id -> file inside assets/audio (e.g. saturn: 'saturn.ogg'). Only listed ids request a recording.
-        const AUDIO_FILES = {};
+        // Real recordings / sonifications: NASA (Sun sonification, EMFISIS chorus, Juno Waves at Ganymede),
+        // NASA/CXC Chandra (Vela pulsar, Perseus black hole).
+        const AUDIO_FILES = {
+            sun: 'sun.mp3',
+            earth: 'earth.mp3',
+            jupiter: 'jupiter.mp3',
+            pulsar: 'pulsar.mp3',
+            gargantua: 'gargantua.mp3'
+        };
         const ASTRO_TARGETS = {
             sun: {
                 id: 'sun', name: 'SOL (ESTRELLA G2V)', colorClass: 'text-yellow-300',
@@ -3563,10 +3571,18 @@
         /* -------------------------------------------------------------------------- */
         const GENESIS_TYPES = {
             rocky: { mode: 0, colors: [0xc79a6b, 0xffe2b8], growFrom: 0.38, growTo: 0.82 },
-            gas:   { mode: 0, colors: [0x9fd8ff, 0xffd59e], growFrom: 0.30, growTo: 0.86 },
+            gas:   { mode: 4, colors: [0x9fd8ff, 0xffd59e], growFrom: 0.30, growTo: 0.86 },
             star:  { mode: 1, colors: [0xff7a2a, 0xffe7a3], growFrom: 0.55, growTo: 0.8, flashAt: 0.62 },
             nova:  { mode: 2, colors: [0x7df9ff, 0xff4fa3], growFrom: 0.22, growTo: 0.4, flashAt: 0.14 },
             hole:  { mode: 3, colors: [0xffa040, 0x7df9ff], growFrom: 0.5, growTo: 0.9, flashAt: 0.72 }
+        };
+        // Camera framing per formation type: polar angle (phi), zoom % and orbit speed.
+        const GENESIS_CAMERA = {
+            rocky: { phi: 1.05, zoom: 14, spin: 0.9 },
+            gas:   { phi: 1.35, zoom: 4, spin: 0.5 },
+            star:  { phi: 0.75, zoom: 0, spin: 0.35 },
+            nova:  { phi: 1.45, zoom: 0, spin: 1.6 },
+            hole:  { phi: 1.2, zoom: 10, spin: 1.2 }
         };
         const GENESIS = {
             sun: { fx: ['jets'], type: 'star', age: 'Hace 4,600 millones de años', steps: [
@@ -3696,10 +3712,16 @@
                     pos = d * r;
                 } else if (uMode < 2.5) {
                     pos = dir * mix(uFinalR, r0 * 1.9, e);
-                } else {
+                } else if (uMode < 3.5) {
                     float r = mix(r0 * 1.3, uFinalR, e);
                     float a = a0 + uTime * (2.0 / max(r, 0.6)) * e;
                     pos = vec3(cos(a) * r * ring, h0 * r * (1.0 - e * 0.92), sin(a) * r * ring);
+                } else {
+                    float r = mix(r0, uFinalR * 1.18, e);
+                    float band = floor((h0 * 0.5 + 0.5) * 11.0);
+                    float dirB = mod(band, 2.0) * 2.0 - 1.0;
+                    float a = a0 + uTime * (0.35 + e * 1.1) * dirB;
+                    pos = vec3(cos(a) * r * ring, h0 * r * mix(1.0, 0.86, e), sin(a) * r * ring);
                 }
                 vMix = rnd;
                 vec4 mv = modelViewMatrix * vec4(pos, 1.0);
@@ -3889,8 +3911,19 @@
             genesis.stepIdx = -1;
             setGenesisScale(type.mode === 2 ? 0 : 0.0001);
 
-            dom.descentSlider.value = 8;
-            updateRelativityTelemetry(8);
+            const cam = GENESIS_CAMERA[cfg.type] || GENESIS_CAMERA.rocky;
+            dom.descentSlider.value = cam.zoom;
+            updateRelativityTelemetry(cam.zoom);
+            genesis.cam = cam;
+            genesis.prevAutoRotate = controls.autoRotate;
+            genesis.prevAutoRotateSpeed = controls.autoRotateSpeed;
+            controls.autoRotate = !reduceMotion.matches;
+            controls.autoRotateSpeed = cam.spin * (Object.keys(GENESIS).indexOf(targetId) % 2 ? -1 : 1);
+            const off = camera.position.clone().sub(controls.target);
+            const sph = new THREE.Spherical().setFromVector3(off);
+            sph.phi = cam.phi;
+            camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(sph));
+            controls.update();
 
             genesisDom.kicker.textContent = `GÉNESIS · ${cfg.age}`;
             genesisDom.card.hidden = false;
@@ -3901,6 +3934,8 @@
         function stopGenesis() {
             if (!genesis.active) return;
             genesis.active = false;
+            controls.autoRotate = !!genesis.prevAutoRotate;
+            controls.autoRotateSpeed = genesis.prevAutoRotateSpeed || 2;
             setGenesisScale(1);
             if (genesis.target && targetGroups[genesis.target]) targetGroups[genesis.target].rotation.z = genesis.baseRotZ || 0;
             ioPlumes.visible = true;
