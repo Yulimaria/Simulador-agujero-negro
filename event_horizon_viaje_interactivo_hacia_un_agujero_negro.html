@@ -2,7 +2,8 @@
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#010103">
     <title>Event Horizon - Laboratorio Comparativo de Gravedad Relativista & Telemetría NASA</title>
     
     <!-- Google Fonts: Inter & JetBrains Mono -->
@@ -199,9 +200,78 @@
         .no-scrollbar::-webkit-scrollbar {
             height: 3px;
         }
+        .no-scrollbar { scrollbar-width: thin; }
+
+        /* Firefox range slider */
+        input[type=range].hud-slider::-moz-range-track {
+            height: 8px;
+            background: linear-gradient(90deg, rgba(0,240,255,0.3) 0%, rgba(255,170,0,0.5) 65%, rgba(255,0,85,0.8) 100%);
+            border-radius: 999px;
+            border: 1px solid rgba(0, 240, 255, 0.35);
+        }
+        input[type=range].hud-slider::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #010103;
+            border: 2px solid #00f0ff;
+            box-shadow: 0 0 12px #00f0ff, inset 0 0 6px #00f0ff;
+            cursor: pointer;
+        }
+        input[type=range].hud-slider { touch-action: pan-y; }
+
+        /* Visible keyboard focus */
+        button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+            outline: 2px solid #00f0ff;
+            outline-offset: 2px;
+        }
+
+        /* Full-height shell that respects mobile browser bars & notches */
+        .hud-shell {
+            height: 100vh;
+            height: 100dvh;
+            max-height: 100vh;
+            max-height: 100dvh;
+            padding: max(0.375rem, env(safe-area-inset-top)) max(0.375rem, env(safe-area-inset-right)) max(0.375rem, env(safe-area-inset-bottom)) max(0.375rem, env(safe-area-inset-left));
+        }
+        @media (min-width: 640px) {
+            .hud-shell {
+                padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+            }
+        }
+
+        /* Small screens: legible minimum type size and bigger touch targets */
+        @media (max-width: 639px) {
+            html body .text-\[8px\] { font-size: 9.5px; }
+            html body .text-\[9px\] { font-size: 10px; }
+            input[type=range].hud-slider::-webkit-slider-thumb { height: 24px; width: 24px; margin-top: -9px; }
+        }
+
+        /* Genesis caption card */
+        .genesis-card {
+            opacity: 0;
+            transform: translateY(8px) scale(0.97);
+            transition: opacity 250ms cubic-bezier(0.23, 1, 0.32, 1), transform 250ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .genesis-card.is-on { opacity: 1; transform: none; }
+        .genesis-step {
+            transition: opacity 250ms cubic-bezier(0.23, 1, 0.32, 1), transform 250ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .genesis-step.is-swapping { opacity: 0; transform: translateY(4px); }
+        @media (prefers-reduced-motion: reduce) {
+            .genesis-card, .genesis-card.is-on, .genesis-step, .genesis-step.is-swapping { transform: none; }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .animate-spin-slow, .animate-spin-reverse, .animate-ping, .animate-pulse, .alarm-active {
+                animation: none !important;
+            }
+            *, *::before, *::after { transition-duration: 0.01ms !important; }
+        }
     </style>
 </head>
-<body class="relative w-screen h-screen overflow-hidden bg-void font-sans antialiased select-none">
+<body class="relative w-full h-[100dvh] overflow-hidden bg-void font-sans antialiased select-none">
 
     <!-- 1. BACKGROUND LAYER: Three.js 3D Canvas -->
     <div id="canvas-container" class="absolute inset-0 w-full h-full z-0 cursor-grab active:cursor-grabbing"></div>
@@ -214,7 +284,7 @@
     <div class="absolute inset-0 cockpit-frame z-10"></div>
 
     <!-- 3. COCKPIT HUD (Full Screen Overlay) -->
-    <div class="relative z-20 flex flex-col justify-between w-full h-screen max-h-screen p-1.5 sm:p-3 overflow-y-auto overflow-x-hidden pointer-events-none gap-2">
+    <div class="hud-shell relative z-20 flex flex-col justify-between w-full overflow-y-auto overflow-x-hidden pointer-events-none gap-2">
 
         <!-- ==================== TOP BAR: FLIGHT INSTRUMENTS ==================== -->
         <header class="flex flex-wrap items-center justify-between w-full gap-2 pointer-events-auto shrink-0">
@@ -250,7 +320,7 @@
             </div>
 
             <!-- Center: Gyroscope & Pitch/Yaw Indicator in Spanish -->
-            <div class="hidden lg:flex items-center gap-2 glass-hud rounded-xl px-3 py-1.5 font-mono text-[10px] text-slate-300">
+            <div class="hidden 2xl:flex items-center gap-2 glass-hud rounded-xl px-3 py-1.5 font-mono text-[10px] text-slate-300">
                 <i data-lucide="compass" class="w-3.5 h-3.5 text-singularity-cyan"></i>
                 <span>GIROSCOPIO DE CABINA:</span>
                 <span id="gyro-value" class="text-singularity-cyan font-bold">0.0° CABECEO / 0.0° GUIÑADA</span>
@@ -258,74 +328,91 @@
 
             <!-- Right Controls: NASA Live API, Ring Skim Camera, Warp Boost & Web Audio -->
             <div class="flex items-center gap-1.5 flex-wrap">
-                <a href="index.html" class="glass-hud rounded-xl px-2.5 py-1.5 text-singularity-cyan text-[10px] sm:text-xs font-mono hover:text-white focus:outline focus:outline-2" aria-label="Volver a la página de inicio">← INICIO</a>
-                <button id="nasa-live-btn" class="glass-hud hover:border-singularity-emerald/80 active:scale-95 transition-all duration-200 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 group border-singularity-emerald/40" title="Abrir Galería Oficial de Misiones NASA en Tiempo Real">
+                <a href="index.html" class="glass-hud rounded-xl p-2 sm:px-2.5 sm:py-1.5 text-singularity-cyan text-[10px] sm:text-xs font-mono hover:text-white focus:outline focus:outline-2" aria-label="Volver a la página de inicio">← <span class="hidden sm:inline">INICIO</span></a>
+                <button id="nasa-live-btn" type="button" aria-label="Fotos NASA" class="glass-hud hover:border-singularity-emerald/80 active:scale-95 transition-all duration-200 rounded-xl p-2 sm:px-2.5 sm:py-1.5 flex items-center gap-1.5 group border-singularity-emerald/40" title="Abrir Galería Oficial de Misiones NASA en Tiempo Real">
                     <span class="w-2 h-2 rounded-full bg-singularity-emerald animate-ping"></span>
                     <i data-lucide="satellite" class="w-3.5 h-3.5 text-singularity-emerald"></i>
-                    <span class="font-mono text-[10px] sm:text-xs font-bold text-singularity-emerald tracking-wider">FOTOS NASA</span>
+                    <span class="hidden sm:inline font-mono text-[10px] sm:text-xs font-bold text-singularity-emerald tracking-wider">FOTOS NASA</span>
                 </button>
 
-                <button id="skim-btn" class="glass-hud hover:border-singularity-cyan/80 active:scale-95 transition-all duration-200 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 group" title="Vuelo rasante sobre los anillos de hielo 3D">
+                <button id="skim-btn" type="button" aria-label="Vista anillos" class="glass-hud hover:border-singularity-cyan/80 active:scale-95 transition-all duration-200 rounded-xl p-2 sm:px-2.5 sm:py-1.5 flex items-center gap-1.5 group" title="Vuelo rasante sobre los anillos de hielo 3D">
                     <i data-lucide="disc" class="w-3.5 h-3.5 text-singularity-cyan group-hover:rotate-45 transition-transform"></i>
-                    <span id="skim-label" class="font-mono text-[10px] sm:text-xs font-bold text-singularity-cyan tracking-wider">VISTA ANILLOS</span>
+                    <span id="skim-label" class="hidden sm:inline font-mono text-[10px] sm:text-xs font-bold text-singularity-cyan tracking-wider">VISTA ANILLOS</span>
                 </button>
 
-                <button id="warp-btn" class="glass-hud hover:border-singularity-amber/80 active:scale-95 transition-all duration-200 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 group">
+                <button id="warp-btn" type="button" aria-label="Impulso" class="glass-hud hover:border-singularity-amber/80 active:scale-95 transition-all duration-200 rounded-xl p-2 sm:px-2.5 sm:py-1.5 flex items-center gap-1.5 group">
                     <i data-lucide="zap" class="w-3.5 h-3.5 text-singularity-amber group-hover:scale-110 transition-transform"></i>
-                    <span class="font-mono text-[10px] sm:text-xs font-bold text-singularity-amber glow-amber tracking-wider">IMPULSO</span>
+                    <span class="hidden sm:inline font-mono text-[10px] sm:text-xs font-bold text-singularity-amber glow-amber tracking-wider">IMPULSO</span>
                 </button>
 
-                <button id="audio-btn" class="glass-hud hover:border-singularity-cyan/80 active:scale-95 transition-all duration-200 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5">
+                <button id="genesis-btn" type="button" aria-label="Génesis: cómo se formó este astro" class="glass-hud hover:border-singularity-violet/80 active:scale-95 transition-all duration-200 rounded-xl p-2 sm:px-2.5 sm:py-1.5 flex items-center gap-1.5 group border-singularity-violet/50">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-300 group-hover:scale-110 transition-transform"></i>
+                    <span class="hidden sm:inline font-mono text-[10px] sm:text-xs font-bold text-purple-300 tracking-wider">GÉNESIS</span>
+                </button>
+
+                <button id="audio-btn" type="button" aria-label="Activar o desactivar sonido" aria-pressed="false" class="glass-hud hover:border-singularity-cyan/80 active:scale-95 transition-all duration-200 rounded-xl p-2 sm:px-2.5 sm:py-1.5 flex items-center gap-1.5">
                     <i id="audio-icon" data-lucide="volume-x" class="w-3.5 h-3.5 text-slate-400"></i>
-                    <span id="audio-label" class="font-mono text-[10px] sm:text-xs font-semibold text-slate-300">SONIDO: APAGADO</span>
+                    <span id="audio-label" class="hidden sm:inline font-mono text-[10px] sm:text-xs font-semibold text-slate-300">SONIDO: APAGADO</span>
                 </button>
             </div>
 
         </header>
 
         <!-- ==================== MIDDLE AREA: LEFT VERTICAL PLANET BAR + CENTER RETICLE + RIGHT NASA WIDGET ==================== -->
-        <div class="relative flex-1 min-h-0 flex items-center justify-between w-full gap-2 my-0.5 pointer-events-none">
+        <div class="relative flex-1 min-h-0 flex flex-col md:flex-row items-stretch md:items-center justify-between w-full gap-2 my-0.5 pointer-events-none">
 
             <!-- LEFT VERTICAL SIDEBAR: 12 Celestial Bodies Selector -->
-            <nav aria-label="Selector vertical de cuerpos celestes" class="glass-hud rounded-2xl p-1.5 sm:p-2 flex flex-col gap-1 max-h-full overflow-y-auto no-scrollbar pointer-events-auto w-28 sm:w-36 shrink-0 border border-singularity-cyan/30 shadow-2xl">
-                <div class="text-[8px] sm:text-[9px] font-mono text-singularity-cyan uppercase tracking-wider font-bold px-1.5 py-0.5 border-b border-white/10 flex items-center justify-between">
-                    <span>12 ASTROS</span>
+            <nav aria-label="Selector vertical de cuerpos celestes" class="glass-hud rounded-2xl p-1.5 sm:p-2 flex flex-row md:flex-col gap-1 md:max-h-full overflow-x-auto md:overflow-x-hidden md:overflow-y-auto no-scrollbar pointer-events-auto w-full md:w-36 shrink-0 border border-singularity-cyan/30 shadow-2xl">
+                <div class="hidden md:flex text-[8px] sm:text-[9px] font-mono text-singularity-cyan uppercase tracking-wider font-bold px-1.5 py-0.5 border-b border-white/10 items-center justify-between">
+                    <span>16 ASTROS</span>
                     <i data-lucide="orbit" class="w-3 h-3"></i>
                 </div>
-                <button type="button" data-target="sun" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="sun" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_8px_#facc15] shrink-0"></span><span class="truncate">SOL</span>
                 </button>
-                <button type="button" data-target="mercury" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="mercury" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-stone-400 shrink-0"></span><span class="truncate">MERCURIO</span>
                 </button>
-                <button type="button" data-target="venus" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="venus" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span><span class="truncate">VENUS</span>
                 </button>
-                <button type="button" data-target="earth" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="earth" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-sky-400 shrink-0"></span><span class="truncate">TIERRA</span>
                 </button>
-                <button type="button" data-target="moon" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="moon" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-slate-300 shrink-0"></span><span class="truncate">LUNA</span>
                 </button>
-                <button type="button" data-target="mars" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="mars" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span><span class="truncate">MARTE</span>
                 </button>
-                <button type="button" data-target="jupiter" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="jupiter" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-orange-400 shrink-0"></span><span class="truncate">JÚPITER</span>
                 </button>
-                <button type="button" data-target="saturn" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-singularity-cyan bg-singularity-cyan/20 text-singularity-cyan glow-cyan flex items-center gap-2">
+                <button type="button" data-target="io" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-yellow-300 shadow-[0_0_8px_#fde047] shrink-0"></span><span class="truncate">ÍO</span>
+                </button>
+                <button type="button" data-target="europa" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-sky-100 shrink-0"></span><span class="truncate">EUROPA</span>
+                </button>
+                <button type="button" data-target="saturn" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-singularity-cyan bg-singularity-cyan/20 text-singularity-cyan glow-cyan flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-amber-200 shadow-[0_0_8px_#fde68a] shrink-0"></span><span class="truncate">SATURNO</span>
                 </button>
-                <button type="button" data-target="uranus" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="titan" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-orange-300 shrink-0"></span><span class="truncate">TITÁN</span>
+                </button>
+                <button type="button" data-target="uranus" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-teal-300 shrink-0"></span><span class="truncate">URANO</span>
                 </button>
-                <button type="button" data-target="neptune" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="neptune" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span><span class="truncate">NEPTUNO</span>
                 </button>
-                <button type="button" data-target="pulsar" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="pluto" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-rose-200 shrink-0"></span><span class="truncate">PLUTÓN</span>
+                </button>
+                <button type="button" data-target="pulsar" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-singularity-cyan shadow-[0_0_8px_#00f0ff] shrink-0"></span><span class="truncate">PÚLSAR</span>
                 </button>
-                <button type="button" data-target="gargantua" class="target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
+                <button type="button" data-target="gargantua" class="target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-singularity-crimson shadow-[0_0_8px_#ff0055] shrink-0"></span><span class="truncate">GARGANTÚA</span>
                 </button>
             </nav>
@@ -360,7 +447,7 @@
                 </div>
 
                 <div class="mt-1.5 text-center font-mono">
-                    <span id="target-lock-text" class="text-[8px] sm:text-[9px] tracking-[0.12em] uppercase text-singularity-cyan/90 bg-void/80 px-2 py-0.5 rounded border border-singularity-cyan/25 shadow-lg">
+                    <span id="target-lock-text" class="inline-block max-w-[88vw] truncate align-middle text-[8px] sm:text-[9px] tracking-[0.12em] uppercase text-singularity-cyan/90 bg-void/80 px-2 py-0.5 rounded border border-singularity-cyan/25 shadow-lg">
                         OBJETIVO: SATURNO (95.16 M⊕)
                     </span>
                 </div>
@@ -405,24 +492,24 @@
         <!-- ==================== BOTTOM BAR: ULTRA-COMPACT & COLLAPSIBLE CONTROL DECK ==================== -->
         <div class="w-full pointer-events-auto shrink-0 flex flex-col gap-1">
             <!-- Quick Collapse / View Clear Toggle Bar -->
-            <div class="flex items-center justify-between px-1">
-                <button id="toggle-bottom-hud-btn" type="button" class="glass-hud hover:border-singularity-cyan px-2.5 py-0.5 rounded-t-lg font-mono text-[9px] font-bold text-singularity-cyan flex items-center gap-1.5 transition-all shadow-md">
+            <div class="flex items-center justify-between gap-2 px-1">
+                <button id="toggle-bottom-hud-btn" type="button" aria-expanded="true" aria-controls="bottom-hud-deck" class="shrink-0 glass-hud hover:border-singularity-cyan px-2.5 py-1 sm:py-0.5 rounded-t-lg font-mono text-[9px] font-bold text-singularity-cyan flex items-center gap-1.5 transition-all shadow-md">
                     <i id="toggle-bottom-hud-icon" data-lucide="chevron-down" class="w-3 h-3"></i>
-                    <span id="toggle-bottom-hud-label">MINIMIZAR PANEL INFERIOR (VISTA DESPEJADA)</span>
+                    <span id="toggle-bottom-hud-label" class="hidden sm:inline">MINIMIZAR PANEL INFERIOR (VISTA DESPEJADA)</span><span id="toggle-bottom-hud-short" class="sm:hidden">OCULTAR PANEL</span>
                 </button>
 
                 <!-- Always-Accessible Mini Zoom Slider when Bottom HUD is collapsed -->
-                <div id="mini-zoom-bar" class="hidden items-center gap-2 glass-hud px-3 py-0.5 rounded-full border border-singularity-cyan/40 w-64 sm:w-80">
+                <div id="mini-zoom-bar" class="hidden items-center gap-2 glass-hud px-3 py-0.5 rounded-full border border-singularity-cyan/40 flex-1 min-w-0 max-w-xs sm:max-w-sm">
                     <span class="font-mono text-[9px] text-singularity-cyan shrink-0">ZOOM:</span>
-                    <input id="mini-descent-slider" type="range" min="0" max="100" step="0.1" value="0" class="hud-slider">
+                    <input id="mini-descent-slider" type="range" aria-label="Zoom rápido" min="0" max="100" step="0.1" value="0" class="hud-slider">
                     <span id="mini-descent-percentage" class="font-mono text-[9px] font-bold text-white shrink-0">0%</span>
                 </div>
             </div>
 
-            <footer id="bottom-hud-deck" class="grid grid-cols-1 lg:grid-cols-12 gap-1.5 items-stretch w-full transition-all duration-300">
+            <footer id="bottom-hud-deck" class="grid grid-cols-1 lg:grid-cols-12 gap-1.5 items-stretch w-full max-h-[46dvh] overflow-y-auto no-scrollbar lg:max-h-none lg:overflow-visible transition-all duration-300">
 
                 <!-- Left Column (4 cols): Compact Relativistic & Planetary Telemetry -->
-                <div id="telemetry-panel" class="lg:col-span-4 glass-hud rounded-xl p-2 transition-all duration-300 flex flex-col justify-between">
+                <div id="telemetry-panel" class="order-3 lg:order-none lg:col-span-4 glass-hud rounded-xl p-2 transition-all duration-300 flex flex-col justify-between">
                     <div class="flex items-center justify-between mb-1 border-b border-singularity-cyan/20 pb-0.5">
                         <div class="flex items-center gap-1">
                             <i data-lucide="activity" class="w-3 h-3 text-singularity-cyan"></i>
@@ -491,7 +578,7 @@
                 </div>
 
                 <!-- Center Column (5 cols): Compact Main Descent Control & Narrative Card -->
-                <div id="story-card" class="lg:col-span-5 glass-hud rounded-xl p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-300">
+                <div id="story-card" class="order-1 lg:order-none lg:col-span-5 glass-hud rounded-xl p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-300">
                     <div>
                         <div class="flex items-center justify-between gap-2">
                             <span id="zone-badge" class="px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider rounded bg-singularity-cyan/20 text-singularity-cyan border border-singularity-cyan/40">
@@ -506,7 +593,7 @@
                                 Aproximación al Objetivo Astrofísico
                             </h3>
                         </div>
-                        <p id="story-desc" class="text-[10px] text-slate-300 leading-tight mt-0.5 line-clamp-1">
+                        <p id="story-desc" class="text-[10px] text-slate-300 leading-tight mt-0.5 line-clamp-2 lg:line-clamp-1">
                             Desliza el propulsor de acercamiento para observar la estructura real y cómo responde el espacio-tiempo.
                         </p>
                     </div>
@@ -523,16 +610,16 @@
                         <input id="descent-slider" type="range" min="0" max="100" step="0.1" value="0" class="hud-slider" aria-label="Control de descenso hacia el objetivo">
 
                         <div class="grid grid-cols-4 text-[8px] font-mono text-slate-400 mt-0.5">
-                            <button type="button" data-milestone="0" class="milestone-btn text-left hover:text-singularity-cyan transition-colors leading-tight">
+                            <button type="button" data-milestone="0" class="milestone-btn py-1 lg:py-0 text-left hover:text-singularity-cyan transition-colors leading-tight">
                                 <span id="m1-val" class="font-bold text-singularity-cyan">15 r_s</span> · <span id="m1-lbl">Lejos</span>
                             </button>
-                            <button type="button" data-milestone="48" class="milestone-btn text-center hover:text-singularity-amber transition-colors leading-tight">
+                            <button type="button" data-milestone="48" class="milestone-btn py-1 lg:py-0 text-center hover:text-singularity-amber transition-colors leading-tight">
                                 <span id="m2-val" class="font-bold text-singularity-amber">6 r_s</span> · <span id="m2-lbl">Media</span>
                             </button>
-                            <button type="button" data-milestone="78" class="milestone-btn text-center hover:text-rose-400 transition-colors leading-tight">
+                            <button type="button" data-milestone="78" class="milestone-btn py-1 lg:py-0 text-center hover:text-rose-400 transition-colors leading-tight">
                                 <span id="m3-val" class="font-bold text-rose-400">2.2 r_s</span> · <span id="m3-lbl">Cerca</span>
                             </button>
-                            <button type="button" data-milestone="100" class="milestone-btn text-right hover:text-singularity-crimson transition-colors leading-tight">
+                            <button type="button" data-milestone="100" class="milestone-btn py-1 lg:py-0 text-right hover:text-singularity-crimson transition-colors leading-tight">
                                 <span id="m4-val" class="font-bold text-singularity-crimson">1.05 r_s</span> · <span id="m4-lbl">Borde</span>
                             </button>
                         </div>
@@ -540,7 +627,7 @@
                 </div>
 
                 <!-- Right Column (3 cols): Compact Interactive Module Launchers -->
-                <div class="lg:col-span-3 grid grid-cols-3 lg:grid-cols-1 gap-1">
+                <div class="order-2 lg:order-none lg:col-span-3 grid grid-cols-3 lg:grid-cols-1 gap-1">
                     <button id="open-spaghetti-btn" class="glass-hud hover:border-singularity-amber/80 active:scale-[0.98] transition-all duration-200 rounded-xl px-2 py-1 text-left group flex items-center justify-between">
                         <div class="flex items-center gap-1.5 min-w-0">
                             <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-singularity-amber shrink-0 group-hover:scale-110 transition-transform"></i>
@@ -579,29 +666,50 @@
 
     </div>
 
+    <!-- GENESIS: scientific formation timeline caption -->
+    <div class="fixed inset-x-0 top-[17%] sm:top-[14%] z-30 flex justify-center px-4 pointer-events-none">
+        <div id="genesis-card" class="genesis-card glass-hud rounded-2xl border border-singularity-violet/50 w-full max-w-md p-3 sm:p-4" role="status" aria-live="polite" hidden>
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+                <span id="genesis-kicker" class="font-mono text-[9px] sm:text-[10px] font-bold tracking-widest text-purple-300 uppercase">GÉNESIS</span>
+                <button id="genesis-skip" type="button" class="pointer-events-auto font-mono text-[9px] sm:text-[10px] px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-slate-300">SALTAR</button>
+            </div>
+            <div id="genesis-step" class="genesis-step">
+                <div id="genesis-title" class="text-xs sm:text-sm font-bold text-white"></div>
+                <p id="genesis-text" class="text-[11px] sm:text-xs text-slate-300 leading-snug mt-1"></p>
+            </div>
+            <div class="mt-2.5 h-1 w-full rounded-full bg-white/10 overflow-hidden">
+                <div id="genesis-bar" class="h-full w-full origin-left bg-gradient-to-r from-singularity-violet via-singularity-amber to-singularity-cyan" style="transform: scaleX(0);"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- ========================================================================= -->
     <!-- 4. MODAL POPUPS (Glassmorphic)                                            -->
     <!-- ========================================================================= -->
 
     <!-- MODAL 1: Spaghettification & Planetary Gravity Simulator -->
-    <div id="modal-spaghetti" class="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-void/80 backdrop-blur-md">
-        <div class="glass-hud rounded-2xl max-w-xl w-full p-4 sm:p-5 border border-singularity-amber/40 shadow-2xl space-y-3 max-h-[92vh] overflow-y-auto">
+    <div id="modal-spaghetti" role="dialog" aria-modal="true" class="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-void/80 backdrop-blur-md">
+        <div class="glass-hud rounded-2xl max-w-xl w-full p-4 sm:p-5 border border-singularity-amber/40 shadow-2xl space-y-3 max-h-[92dvh] overflow-y-auto">
             <div class="flex items-center justify-between border-b border-white/10 pb-2">
                 <div class="flex items-center gap-2">
                     <i data-lucide="maximize-2" class="w-4 h-4 text-singularity-amber"></i>
                     <div>
                         <h3 class="font-mono text-xs sm:text-sm font-bold text-white uppercase">Simulador Biodinámico: Gravedad Planetaria vs. Espaguetificación</h3>
-                        <p id="spaghetti-Astro-subtitle" class="font-mono text-[9px] text-singularity-cyan">SELECCIONA CUALQUIERA DE LOS 12 ASTROS PARA COMPARAR SU EFECTO EN EL CUERPO HUMANO</p>
+                        <p id="spaghetti-Astro-subtitle" class="font-mono text-[9px] text-singularity-cyan">SELECCIONA CUALQUIERA DE LOS 16 ASTROS PARA COMPARAR SU EFECTO EN EL CUERPO HUMANO</p>
                     </div>
                 </div>
-                <button type="button" data-close-modal="modal-spaghetti" class="text-slate-400 hover:text-white p-1">
+                <button type="button" data-close-modal="modal-spaghetti" aria-label="Cerrar" class="shrink-0 text-slate-400 hover:text-white p-2 -m-1 rounded-lg">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
 
             <!-- Selector of all 12 Celestial Bodies inside the Gravity Simulator -->
-            <div class="grid grid-cols-4 sm:grid-cols-6 gap-1">
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1">
+                <button type="button" data-spaghetti-preset="pluto" class="spaghetti-preset-btn px-1.5 py-1 rounded bg-white/5 hover:bg-white/10 font-mono text-[9px] text-slate-300 border border-white/10 truncate">Plutón (0.06G)</button>
+                <button type="button" data-spaghetti-preset="europa" class="spaghetti-preset-btn px-1.5 py-1 rounded bg-white/5 hover:bg-white/10 font-mono text-[9px] text-slate-300 border border-white/10 truncate">Europa (0.13G)</button>
+                <button type="button" data-spaghetti-preset="titan" class="spaghetti-preset-btn px-1.5 py-1 rounded bg-white/5 hover:bg-white/10 font-mono text-[9px] text-slate-300 border border-white/10 truncate">Titán (0.14G)</button>
                 <button type="button" data-spaghetti-preset="moon" class="spaghetti-preset-btn px-1.5 py-1 rounded bg-white/5 hover:bg-white/10 font-mono text-[9px] text-slate-300 border border-white/10 truncate">Luna (0.16G)</button>
+                <button type="button" data-spaghetti-preset="io" class="spaghetti-preset-btn px-1.5 py-1 rounded bg-white/5 hover:bg-white/10 font-mono text-[9px] text-slate-300 border border-white/10 truncate">Ío (0.18G)</button>
                 <button type="button" data-spaghetti-preset="mercury" class="spaghetti-preset-btn px-1.5 py-1 rounded bg-white/5 hover:bg-white/10 font-mono text-[9px] text-slate-300 border border-white/10 truncate">Mercurio (0.38G)</button>
                 <button type="button" data-spaghetti-preset="mars" class="spaghetti-preset-btn px-1.5 py-1 rounded bg-white/5 hover:bg-white/10 font-mono text-[9px] text-slate-300 border border-white/10 truncate">Marte (0.38G)</button>
                 <button type="button" data-spaghetti-preset="uranus" class="spaghetti-preset-btn px-1.5 py-1 rounded bg-white/5 hover:bg-white/10 font-mono text-[9px] text-slate-300 border border-white/10 truncate">Urano (0.89G)</button>
@@ -688,14 +796,14 @@
     </div>
 
     <!-- MODAL 2: Electromagnetic Laser Redshift Transmitter -->
-    <div id="modal-laser" class="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-void/80 backdrop-blur-md">
-        <div class="glass-hud rounded-2xl max-w-lg w-full p-4 sm:p-5 border border-singularity-cyan/40 shadow-2xl space-y-3">
+    <div id="modal-laser" role="dialog" aria-modal="true" class="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-void/80 backdrop-blur-md">
+        <div class="glass-hud rounded-2xl max-w-lg w-full p-4 sm:p-5 border border-singularity-cyan/40 shadow-2xl space-y-3 max-h-[92dvh] overflow-y-auto">
             <div class="flex items-center justify-between border-b border-white/10 pb-2">
                 <div>
                     <h3 class="font-mono text-xs sm:text-sm font-bold text-white uppercase">Transmisor Láser de Corrimiento al Rojo (Redshift)</h3>
                     <p id="laser-subtitle" class="font-mono text-[9px] text-singularity-cyan">SONDA KERR-IX ➔ RECEPTOR EN LA TIERRA</p>
                 </div>
-                <button type="button" data-close-modal="modal-laser" class="text-slate-400 hover:text-white p-1">
+                <button type="button" data-close-modal="modal-laser" aria-label="Cerrar" class="shrink-0 text-slate-400 hover:text-white p-2 -m-1 rounded-lg">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
@@ -730,16 +838,16 @@
     </div>
 
     <!-- MODAL 3: Comparative Table of 12 Celestial Bodies -->
-    <div id="modal-compare" class="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-void/80 backdrop-blur-md">
-        <div class="glass-hud rounded-2xl max-w-4xl w-full p-4 sm:p-5 border border-singularity-cyan/40 shadow-2xl space-y-3 max-h-[90vh] flex flex-col">
+    <div id="modal-compare" role="dialog" aria-modal="true" class="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-void/80 backdrop-blur-md">
+        <div class="glass-hud rounded-2xl max-w-4xl w-full p-4 sm:p-5 border border-singularity-cyan/40 shadow-2xl space-y-3 max-h-[90dvh] flex flex-col">
             <div class="flex items-center justify-between border-b border-white/10 pb-2 shrink-0">
-                <h3 class="font-mono text-xs sm:text-sm font-bold text-white uppercase">Tabla Comparativa Relativista (12 Astros)</h3>
-                <button type="button" data-close-modal="modal-compare" class="text-slate-400 hover:text-white p-1">
+                <h3 class="font-mono text-xs sm:text-sm font-bold text-white uppercase">Tabla Comparativa Relativista (16 Astros)</h3>
+                <button type="button" data-close-modal="modal-compare" aria-label="Cerrar" class="shrink-0 text-slate-400 hover:text-white p-2 -m-1 rounded-lg">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
             <div class="overflow-auto flex-1">
-                <table class="w-full text-left font-mono text-xs">
+                <table class="w-full min-w-[640px] text-left font-mono text-xs">
                     <thead class="text-[10px] text-slate-400 border-b border-white/10 uppercase">
                         <tr>
                             <th class="py-1.5 px-2">Astro</th>
@@ -757,9 +865,9 @@
     </div>
 
     <!-- MODAL 4: Official NASA Image & Video Library Gallery -->
-    <div id="modal-nasa" class="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-void/85 backdrop-blur-md">
-        <div class="glass-hud rounded-2xl max-w-2xl w-full p-4 sm:p-5 border border-singularity-emerald/50 shadow-2xl space-y-3 max-h-[92vh] overflow-y-auto">
-            <div class="flex items-center justify-between border-b border-white/10 pb-2">
+    <div id="modal-nasa" role="dialog" aria-modal="true" class="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-void/85 backdrop-blur-md">
+        <div class="glass-hud rounded-2xl max-w-2xl w-full p-4 sm:p-5 border border-singularity-emerald/50 shadow-2xl space-y-3 max-h-[92dvh] overflow-y-auto">
+            <div class="flex items-start sm:items-center justify-between gap-2 border-b border-white/10 pb-2">
                 <div>
                     <h3 class="font-mono text-xs sm:text-sm font-bold text-singularity-emerald uppercase flex items-center gap-1.5">
                         <i data-lucide="satellite" class="w-4 h-4"></i>
@@ -767,16 +875,16 @@
                     </h3>
                     <p id="modal-nasa-subtitle" class="font-mono text-[9px] text-slate-400">API EN VIVO: images-api.nasa.gov</p>
                 </div>
-                <div class="flex items-center gap-1.5">
-                    <button id="open-compare-from-nasa" type="button" class="px-2 py-1 rounded bg-singularity-cyan/15 border border-singularity-cyan/40 font-mono text-[9px] text-singularity-cyan">TABLA 12 ASTROS</button>
+                <div class="flex flex-wrap justify-end items-center gap-1.5">
+                    <button id="open-compare-from-nasa" type="button" class="px-2 py-1 rounded bg-singularity-cyan/15 border border-singularity-cyan/40 font-mono text-[9px] text-singularity-cyan">TABLA 16 ASTROS</button>
                     <button id="nasa-refresh-btn" type="button" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 font-mono text-[9px] text-slate-300">RECARGAR</button>
-                    <button type="button" data-close-modal="modal-nasa" class="text-slate-400 hover:text-white p-1">
+                    <button type="button" data-close-modal="modal-nasa" aria-label="Cerrar" class="shrink-0 text-slate-400 hover:text-white p-2 -m-1 rounded-lg">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="relative h-56 sm:h-64 w-full rounded-xl overflow-hidden bg-void border border-white/10">
+            <div class="relative h-48 sm:h-64 w-full rounded-xl overflow-hidden bg-void border border-white/10">
                 <img id="nasa-modal-main-img" src="https://placehold.co/800x500/05050e/00f0ff?text=NASA+API" alt="Fotografía NASA" class="w-full h-full object-contain bg-black">
                 <div class="absolute bottom-2 left-2 right-2 flex justify-between text-[9px] font-mono">
                     <span id="nasa-modal-center" class="px-2 py-0.5 rounded bg-void/85 text-singularity-amber border border-singularity-amber/40">CENTRO: NASA / JPL</span>
@@ -789,7 +897,8 @@
                 <p id="nasa-modal-desc" class="text-[11px] text-slate-300 mt-1 max-h-24 overflow-y-auto leading-relaxed">Datos recibidos de images-api.nasa.gov.</p>
             </div>
 
-            <div id="nasa-modal-thumbs" class="grid grid-cols-6 gap-1.5 pt-1"></div>
+            <div id="nasa-modal-thumbs" class="grid grid-cols-4 sm:grid-cols-6 gap-1.5 pt-1"></div>
+            <p class="font-mono text-[9px] text-slate-500 leading-snug">Texturas: Solar System Scope (CC BY 4.0), NASA/JPL-Caltech/USGS y three.js. Audio: grabaciones y sonificaciones de misiones NASA/ESA (Cassini, Juno, Voyager, Perseverance, Huygens, Chandra).</p>
         </div>
     </div>
 
@@ -802,11 +911,23 @@
         /* -------------------------------------------------------------------------- */
         /* 12 ASTROPHYSICAL TARGET DEFINITIONS + NASA API QUERIES & TEXTURE URLS      */
         /* -------------------------------------------------------------------------- */
+        const TEX = 'assets/textures/';
+        const AUDIO = 'assets/audio/';
+        // id -> file inside assets/audio (e.g. saturn: 'saturn.ogg'). Only listed ids request a recording.
+        // Real recordings / sonifications: NASA (Sun sonification, EMFISIS chorus, Juno Waves at Ganymede),
+        // NASA/CXC Chandra (Vela pulsar, Perseus black hole).
+        const AUDIO_FILES = {
+            sun: 'sun.mp3',
+            earth: 'earth.mp3',
+            jupiter: 'jupiter.mp3',
+            pulsar: 'pulsar.mp3',
+            gargantua: 'gargantua.mp3'
+        };
         const ASTRO_TARGETS = {
             sun: {
                 id: 'sun', name: 'SOL (ESTRELLA G2V)', colorClass: 'text-yellow-300',
                 nasaQuery: 'Sun Solar Dynamics Observatory flare',
-                textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Map_of_the_full_sun.jpg',
+                textureUrl: TEX + 'sun.jpg', textureFallback: 'https://upload.wikimedia.org/wikipedia/commons/c/cb/Solarsystemscope_texture_2k_sun.jpg',
                 atmoColor: [1.0, 0.58, 0.08],
                 lockTitle: 'OBJETIVO: SOL (1.0 M☉ · PLASMA TERMONUCLEAR)',
                 realRadiusText: '696,340 km', rsRealText: 'r_s = 2.95 km',
@@ -829,7 +950,7 @@
             mercury: {
                 id: 'mercury', name: 'MERCURIO', colorClass: 'text-stone-300',
                 nasaQuery: 'Mercury MESSENGER planet crater',
-                textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/30/Mercury_in_color_-_Prockter07_centered.jpg',
+                textureUrl: TEX + 'mercury.jpg', textureFallback: 'https://upload.wikimedia.org/wikipedia/commons/9/92/Solarsystemscope_texture_2k_mercury.jpg',
                 atmoColor: [0.65, 0.62, 0.58],
                 lockTitle: 'OBJETIVO: MERCURIO (0.055 M⊕ · PRECESIÓN RELATIVISTA)',
                 realRadiusText: '2,439.7 km', rsRealText: 'r_s = 0.48 mm',
@@ -852,7 +973,7 @@
             venus: {
                 id: 'venus', name: 'VENUS', colorClass: 'text-amber-300',
                 nasaQuery: 'Venus Magellan clouds planet',
-                textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/1/1c/Solarsystemscope_texture_2k_venus_atmosphere.jpg',
+                textureUrl: TEX + 'venus_atmosphere.jpg', textureFallback: 'https://upload.wikimedia.org/wikipedia/commons/6/63/Solarsystemscope_texture_2k_venus_atmosphere.jpg',
                 atmoColor: [1.0, 0.78, 0.35],
                 lockTitle: 'OBJETIVO: VENUS (0.815 M⊕ · SUPERROTACIÓN ÁCIDA)',
                 realRadiusText: '6,051.8 km', rsRealText: 'r_s = 7.24 mm',
@@ -875,10 +996,11 @@
             earth: {
                 id: 'earth', name: 'TIERRA', colorClass: 'text-sky-400',
                 nasaQuery: 'Earth Blue Marble ISS planet',
-                textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/r128/examples/textures/planets/earth_atmos_2048.jpg',
-                normalUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/r128/examples/textures/planets/earth_normal_2048.jpg',
-                specularUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/r128/examples/textures/planets/earth_specular_2048.jpg',
-                cloudsUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/r128/examples/textures/planets/earth_clouds_1024.png',
+                textureUrl: TEX + 'earth_atmos_2048.jpg',
+                normalUrl: TEX + 'earth_normal_2048.jpg',
+                specularUrl: TEX + 'earth_specular_2048.jpg',
+                cloudsUrl: TEX + 'earth_clouds_1024.png',
+                nightUrl: TEX + 'earth_lights_2048.png',
                 atmoColor: [0.18, 0.65, 1.0],
                 lockTitle: 'OBJETIVO: TIERRA (1.0 M⊕ · REFERENCIA HUMANA Y GPS)',
                 realRadiusText: '6,371 km', rsRealText: 'r_s = 8.87 mm (Canica)',
@@ -901,7 +1023,7 @@
             moon: {
                 id: 'moon', name: 'LUNA', colorClass: 'text-slate-300',
                 nasaQuery: 'Moon Lunar Reconnaissance Orbiter craters',
-                textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/r128/examples/textures/planets/moon_1024.jpg',
+                textureUrl: TEX + 'moon.jpg', textureFallback: TEX + 'moon_1024.jpg', textureFallback2: 'https://raw.githubusercontent.com/mrdoob/three.js/r128/examples/textures/planets/moon_1024.jpg',
                 atmoColor: [0.6, 0.65, 0.7],
                 lockTitle: 'OBJETIVO: LUNA (0.012 M⊕ · MARES BASÁLTICOS)',
                 realRadiusText: '1,737.4 km', rsRealText: 'r_s = 0.109 mm',
@@ -924,7 +1046,7 @@
             mars: {
                 id: 'mars', name: 'MARTE', colorClass: 'text-red-400',
                 nasaQuery: 'Mars Perseverance Viking globe',
-                textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Solarsystemscope_texture_2k_mars.jpg',
+                textureUrl: TEX + 'mars.jpg', textureFallback: 'https://upload.wikimedia.org/wikipedia/commons/4/46/Solarsystemscope_texture_2k_mars.jpg',
                 atmoColor: [0.95, 0.45, 0.22],
                 lockTitle: 'OBJETIVO: MARTE (0.107 M⊕ · ÓXIDO DE HIERRO Y POLVO)',
                 realRadiusText: '3,389.5 km', rsRealText: 'r_s = 0.95 mm',
@@ -947,7 +1069,7 @@
             jupiter: {
                 id: 'jupiter', name: 'JÚPITER', colorClass: 'text-orange-400',
                 nasaQuery: 'Jupiter Juno Great Red Spot',
-                textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/e2/Jupiter.jpg',
+                textureUrl: TEX + 'jupiter.jpg', textureFallback: 'https://upload.wikimedia.org/wikipedia/commons/b/be/Solarsystemscope_texture_2k_jupiter.jpg',
                 atmoColor: [0.95, 0.68, 0.38],
                 lockTitle: 'OBJETIVO: JÚPITER (317.8 M⊕ · GRAN MANCHA ROJA)',
                 realRadiusText: '69,911 km', rsRealText: 'r_s = 2.82 metros',
@@ -970,7 +1092,7 @@
             saturn: {
                 id: 'saturn', name: 'SATURNO (ANILLOS 3D REALISTAS)', colorClass: 'text-amber-200',
                 nasaQuery: 'Saturn Cassini rings planet',
-                textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c7/Saturn_during_Equinox.jpg',
+                textureUrl: TEX + 'saturn.jpg', textureFallback: 'https://upload.wikimedia.org/wikipedia/commons/e/ea/Solarsystemscope_texture_2k_saturn.jpg',
                 atmoColor: [0.94, 0.84, 0.58],
                 lockTitle: 'OBJETIVO: SATURNO (95.16 M⊕ · SISTEMA DE ANILLOS LOD 3D)',
                 realRadiusText: '58,232 km', rsRealText: 'r_s = 0.85 metros (85 cm)',
@@ -993,7 +1115,7 @@
             uranus: {
                 id: 'uranus', name: 'URANO', colorClass: 'text-teal-300',
                 nasaQuery: 'Uranus Voyager Hubble rings',
-                textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/9/95/Solarsystemscope_texture_2k_uranus.jpg',
+                textureUrl: TEX + 'uranus.jpg', textureFallback: 'https://upload.wikimedia.org/wikipedia/commons/9/95/Solarsystemscope_texture_2k_uranus.jpg',
                 atmoColor: [0.35, 0.92, 0.98],
                 lockTitle: 'OBJETIVO: URANO (14.5 M⊕ · INCLINACIÓN AXIAL 97.7°)',
                 realRadiusText: '25,362 km', rsRealText: 'r_s = 12.8 cm',
@@ -1016,7 +1138,7 @@
             neptune: {
                 id: 'neptune', name: 'NEPTUNO', colorClass: 'text-blue-400',
                 nasaQuery: 'Neptune Voyager 2 Great Dark Spot',
-                textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/1/1e/Solarsystemscope_texture_2k_neptune.jpg',
+                textureUrl: TEX + 'neptune.jpg', textureFallback: 'https://upload.wikimedia.org/wikipedia/commons/1/1e/Solarsystemscope_texture_2k_neptune.jpg',
                 atmoColor: [0.20, 0.52, 1.0],
                 lockTitle: 'OBJETIVO: NEPTUNO (17.1 M⊕ · VIENTOS SUPERSÓNICOS)',
                 realRadiusText: '24,622 km', rsRealText: 'r_s = 15.2 cm',
@@ -1034,6 +1156,98 @@
                     ['NEPTUNO // DESCUBIERTO CON MATEMÁTICAS', 'Triunfo de la Gravitación Universal', 'Neptuno fue predicho matemáticamente antes de ser visto al observar cómo su gravedad tiraba de la órbita de Urano.'],
                     ['NEPTUNO // ANILLOS DE ADAMS Y ARCOS', 'Vientos Supersónicos de 2,100 km/h', 'Su radio de Schwarzschild es de 15.2 centímetros.'],
                     ['NEPTUNO // GRAN MANCHA OSCURA (1.14 G)', 'Profundidades de Hielo a Alta Presión', 'La gravedad es apenas un 14% mayor que en la Tierra, con una dilatación temporal de solo 98 milisegundos al año.']
+                ]
+            },
+            io: {
+                id: 'io', name: 'ÍO (LUNA DE JÚPITER)', colorClass: 'text-yellow-300',
+                nasaQuery: 'Io volcano Jupiter moon Galileo',
+                textureUrl: TEX + 'io.jpg',
+                atmoColor: [1.0, 0.82, 0.25],
+                lockTitle: 'OBJETIVO: ÍO (0.015 M⊕ · 400 VOLCANES ACTIVOS)',
+                realRadiusText: '1,821.6 km', rsRealText: 'r_s = 0.13 mm',
+                soundscapeName: 'PLASMA DEL TORO DE ÍO (JUNO)', unitLabel: 'R_ío', gravityLabel: 'GRAVEDAD LOCAL',
+                comparisonPill: 'MUNDO VOLCÁNICO (0.18 G)', surfaceG: 0.183, baseZ: 3.6e-11,
+                timeDriftText: '+1.1 ms por año (Local)',
+                summary: 'El cuerpo más volcánico del Sistema Solar: la marea de Júpiter lo amasa y lanza penachos de azufre a 400 km de altura.',
+                milestones: [
+                    { val: '15 R_ío', lbl: 'Órbita Juno' },
+                    { val: '5.0 R_ío', lbl: 'Penacho Pele' },
+                    { val: '2.0 R_ío', lbl: 'Loki Patera' },
+                    { val: '1.05 R_ío', lbl: 'Lava (0.18G)' }
+                ],
+                stories: [
+                    ['ÍO // MAREA DE JÚPITER', 'Una Luna Amasada por la Gravedad', 'La gravedad de Júpiter deforma la corteza de Ío hasta 100 metros en cada órbita. Esa fricción interna funde la roca y alimenta más de 400 volcanes activos.'],
+                    ['ÍO // PENACHO DE PELE', 'Fuentes de Azufre a 400 km', 'Los penachos volcánicos son tan altos que escapan al espacio y forman el toro de plasma que rodea a Júpiter, el mismo que la sonda Juno escucha en radio.'],
+                    ['ÍO // LOKI PATERA (0.18 G)', 'Un Lago de Lava de 200 km', 'Loki Patera es un lago de lava mayor que muchos países. Con 0.18 G un salto te elevaría más de 5 metros sobre la costra de azufre.']
+                ]
+            },
+            europa: {
+                id: 'europa', name: 'EUROPA (OCÉANO BAJO EL HIELO)', colorClass: 'text-sky-200',
+                nasaQuery: 'Europa ice moon Jupiter Juno Galileo',
+                textureUrl: TEX + 'europa.jpg',
+                atmoColor: [0.75, 0.88, 1.0],
+                lockTitle: 'OBJETIVO: EUROPA (0.008 M⊕ · OCÉANO SUBTERRÁNEO)',
+                realRadiusText: '1,560.8 km', rsRealText: 'r_s = 0.071 mm',
+                soundscapeName: 'SOBREVUELO JUNO DE EUROPA', unitLabel: 'R_eur', gravityLabel: 'GRAVEDAD LOCAL',
+                comparisonPill: 'OCÉANO HELADO (0.13 G)', surfaceG: 0.134, baseZ: 2.3e-11,
+                timeDriftText: '+0.72 ms por año (Local)',
+                summary: 'Corteza de hielo surcada por grietas rojizas sobre un océano salado con el doble de agua que la Tierra.',
+                milestones: [
+                    { val: '15 R_eur', lbl: 'Europa Clipper' },
+                    { val: '5.0 R_eur', lbl: 'Líneas Rojas' },
+                    { val: '2.0 R_eur', lbl: 'Caos Conamara' },
+                    { val: '1.05 R_eur', lbl: 'Hielo (0.13G)' }
+                ],
+                stories: [
+                    ['EUROPA // OBJETIVO EUROPA CLIPPER', 'El Mejor Lugar para Buscar Vida', 'Bajo 15–25 km de hielo hay un océano global de agua salada que contiene más agua que todos los océanos de la Tierra juntos.'],
+                    ['EUROPA // LINEAE', 'Cicatrices de la Marea', 'Las grietas rojizas (lineae) se abren y cierran con la marea de Júpiter. El color proviene de sales y compuestos de azufre que suben desde el océano.'],
+                    ['EUROPA // CAOS CONAMARA (0.13 G)', 'Icebergs Congelados', 'Bloques de hielo del tamaño de ciudades se desprendieron y volvieron a congelarse. Aquí pesarías apenas 9 kg.']
+                ]
+            },
+            titan: {
+                id: 'titan', name: 'TITÁN (LUNA DE SATURNO)', colorClass: 'text-orange-300',
+                nasaQuery: 'Titan Saturn moon Cassini Huygens',
+                textureUrl: TEX + 'titan.jpg',
+                atmoColor: [1.0, 0.62, 0.18],
+                lockTitle: 'OBJETIVO: TITÁN (0.0225 M⊕ · ATMÓSFERA DE 1.5 BAR)',
+                realRadiusText: '2,574.7 km', rsRealText: 'r_s = 0.20 mm',
+                soundscapeName: 'DESCENSO HUYGENS 2005', unitLabel: 'R_tit', gravityLabel: 'GRAVEDAD LOCAL',
+                comparisonPill: 'MARES DE METANO (0.14 G)', surfaceG: 0.138, baseZ: 3.9e-11,
+                timeDriftText: '+1.2 ms por año (Local)',
+                summary: 'Única luna con atmósfera densa: neblina naranja, lluvia de metano y mares de hidrocarburos. Aquí aterrizó la sonda Huygens.',
+                milestones: [
+                    { val: '15 R_tit', lbl: 'Órbita Cassini' },
+                    { val: '5.0 R_tit', lbl: 'Neblina Tolina' },
+                    { val: '2.0 R_tit', lbl: 'Kraken Mare' },
+                    { val: '1.05 R_tit', lbl: 'Huygens (0.14G)' }
+                ],
+                stories: [
+                    ['TITÁN // NEBLINA NARANJA', 'Un Mundo Envuelto en Smog Orgánico', 'Su atmósfera de nitrógeno es 50% más densa que la terrestre. Las tolinas, moléculas orgánicas complejas, la tiñen de naranja e impiden ver la superficie en luz visible.'],
+                    ['TITÁN // KRAKEN MARE', 'Mares de Metano Líquido', 'Es el único otro lugar del Sistema Solar con líquidos estables en superficie: mares de metano y etano a -179 °C.'],
+                    ['TITÁN // SITIO HUYGENS (0.14 G)', 'Podrías Volar con Alas', 'Con 0.14 G y 1.5 bar de presión, un humano con alas en los brazos podría volar. El 14 de enero de 2005 la sonda Huygens grabó el sonido del descenso.']
+                ]
+            },
+            pluto: {
+                id: 'pluto', name: 'PLUTÓN (PLANETA ENANO)', colorClass: 'text-rose-200',
+                nasaQuery: 'Pluto New Horizons heart Tombaugh',
+                textureUrl: TEX + 'pluto.jpg',
+                atmoColor: [0.45, 0.65, 1.0],
+                lockTitle: 'OBJETIVO: PLUTÓN (0.0022 M⊕ · CORAZÓN DE NITRÓGENO)',
+                realRadiusText: '1,188.3 km', rsRealText: 'r_s = 0.019 mm',
+                soundscapeName: 'SILENCIO DEL CINTURÓN DE KUIPER', unitLabel: 'R_plu', gravityLabel: 'MICRO-GRAVEDAD',
+                comparisonPill: 'PLANETA ENANO (0.06 G)', surfaceG: 0.063, baseZ: 8.1e-12,
+                timeDriftText: '+0.26 ms por año (Local)',
+                summary: 'El corazón Tombaugh Regio es un glaciar de nitrógeno; montañas de hielo de agua y una neblina azul captada por New Horizons en 2015.',
+                milestones: [
+                    { val: '15 R_plu', lbl: 'New Horizons' },
+                    { val: '5.0 R_plu', lbl: 'Neblina Azul' },
+                    { val: '2.0 R_plu', lbl: 'Sputnik Planitia' },
+                    { val: '1.05 R_plu', lbl: 'Glaciar (0.06G)' }
+                ],
+                stories: [
+                    ['PLUTÓN // SOBREVUELO NEW HORIZONS', 'A 5,900 Millones de Kilómetros', 'La luz del Sol tarda 5.5 horas en llegar. New Horizons pasó a 12,500 km de su superficie el 14 de julio de 2015.'],
+                    ['PLUTÓN // NEBLINA AZUL', 'Una Atmósfera que se Congela', 'Su tenue atmósfera de nitrógeno dispersa la luz en azul. Cuando Plutón se aleja del Sol, la atmósfera se congela y cae como nieve.'],
+                    ['PLUTÓN // SPUTNIK PLANITIA (0.06 G)', 'El Corazón de Hielo de Nitrógeno', 'Un glaciar de 1,000 km de nitrógeno sólido que se renueva por convección. Aquí una persona de 70 kg pesaría solo 4.4 kg.']
                 ]
             },
             pulsar: {
@@ -1155,6 +1369,79 @@
                 this.noiseGain = null;
             }
 
+            synthBus() {
+                if (!this.bus) {
+                    this.bus = this.ctx.createGain();
+                    this.bus.gain.value = 1.0;
+                    this.bus.connect(this.ctx.destination);
+                }
+                return this.bus;
+            }
+
+            // Real mission recordings / sonifications (assets/audio/<id>.mp3).
+            // They play through a low-pass that opens as you approach, and their
+            // playback rate follows gravitational time dilation (1/γ).
+            playRecording(targetId) {
+                const prev = this.recording;
+                if (prev) {
+                    const t = this.ctx.currentTime;
+                    if (prev.gain) {
+                        prev.gain.gain.cancelScheduledValues(t);
+                        prev.gain.gain.setTargetAtTime(0, t, 0.25);
+                    } else {
+                        prev.el.volume = 0;
+                    }
+                    const el = prev.el;
+                    setTimeout(() => { if (this.recording !== prev) el.pause(); }, 900);
+                }
+                this.recording = null;
+                this.recordingOk = false;
+                if (this.synthBus()) this.bus.gain.setTargetAtTime(1.0, this.ctx.currentTime, 0.2);
+
+                if (!AUDIO_FILES[targetId]) return;
+                if (!this.recordings) this.recordings = {};
+                let rec = this.recordings[targetId];
+                if (!rec) {
+                    const el = new Audio();
+                    el.src = AUDIO + AUDIO_FILES[targetId];
+                    el.loop = true;
+                    el.preload = 'auto';
+                    if ('preservesPitch' in el) el.preservesPitch = false;
+                    if ('webkitPreservesPitch' in el) el.webkitPreservesPitch = false;
+                    // Opened as file:// the browser mutes local media routed through Web Audio,
+                    // so in that case the recording plays directly (volume/rate still follow telemetry).
+                    const direct = location.protocol === 'file:';
+                    let filter = null;
+                    let gain = null;
+                    if (!direct) {
+                        const src = this.ctx.createMediaElementSource(el);
+                        filter = this.ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.value = 1800;
+                        gain = this.ctx.createGain();
+                        gain.gain.value = 0;
+                        src.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                    } else {
+                        el.volume = 0;
+                    }
+                    rec = { el, filter, gain, direct, failed: false };
+                    el.addEventListener('error', () => { rec.failed = true; });
+                    this.recordings[targetId] = rec;
+                }
+                if (rec.failed) return;
+                this.recording = rec;
+                rec.el.currentTime = 0;
+                rec.el.play().then(() => {
+                    if (this.recording !== rec || !this.isPlaying) { rec.el.pause(); return; }
+                    this.recordingOk = true;
+                    const t = this.ctx.currentTime;
+                    if (rec.gain) rec.gain.gain.setTargetAtTime(0.9, t, 0.4);
+                    else rec.el.volume = 0.6;
+                    this.bus.gain.setTargetAtTime(0.35, t, 0.4);
+                    this.updateByTelemetry(state.rs);
+                }).catch((err) => { if (err && err.name === 'AbortError') return; rec.failed = true; });
+            }
+
             createLoopingNoiseBuffer() {
                 const bufferSize = this.ctx.sampleRate * 2;
                 const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
@@ -1170,6 +1457,7 @@
                 if (!this.isPlaying) return;
                 this.init();
                 this.clearCurrentNodes();
+                this.playRecording(targetId);
                 const now = this.ctx.currentTime;
 
                 if (targetId === 'saturn') {
@@ -1189,7 +1477,7 @@
                     gain.gain.setValueAtTime(0.085, now);
 
                     lfo.connect(lfoGain); lfoGain.connect(osc1.frequency);
-                    osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                    osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(this.synthBus());
                     osc1.start(); osc2.start(); lfo.start();
 
                     this.primaryOsc = osc1; this.secondaryOsc = osc2; this.mainFilter = filter;
@@ -1211,7 +1499,7 @@
                             ping.frequency.exponentialRampToValueAtTime(freq * 0.78, t + 0.18);
                             pGain.gain.setValueAtTime(0.02 + prox * 0.055, t);
                             pGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
-                            ping.connect(pGain); pGain.connect(this.ctx.destination);
+                            ping.connect(pGain); pGain.connect(this.synthBus());
                             ping.start(t); ping.stop(t + 0.22);
                             scheduleIceChime();
                         }, delay);
@@ -1229,7 +1517,7 @@
                     filter.type = 'lowpass'; filter.frequency.setValueAtTime(145, now); filter.Q.setValueAtTime(3.5, now);
                     gain.gain.setValueAtTime(0.18, now);
 
-                    noise.connect(filter); subOsc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                    noise.connect(filter); subOsc.connect(filter); filter.connect(gain); gain.connect(this.synthBus());
                     noise.start(); subOsc.start();
                     this.primaryOsc = subOsc; this.mainFilter = filter;
                     this.activeNodes.push(noise, subOsc, filter, gain);
@@ -1241,7 +1529,7 @@
                     osc.type = 'sine'; osc.frequency.setValueAtTime(432, now);
                     filter.type = 'bandpass'; filter.frequency.setValueAtTime(520, now);
                     gain.gain.setValueAtTime(0.05, now);
-                    osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                    osc.connect(filter); filter.connect(gain); gain.connect(this.synthBus());
                     osc.start();
                     this.primaryOsc = osc; this.mainFilter = filter;
                     this.activeNodes.push(osc, filter, gain);
@@ -1259,7 +1547,7 @@
                             cOsc.frequency.exponentialRampToValueAtTime(baseF * 1.65, t + 0.32);
                             cGain.gain.setValueAtTime(0.035, t);
                             cGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
-                            cOsc.connect(cGain); cGain.connect(this.ctx.destination);
+                            cOsc.connect(cGain); cGain.connect(this.synthBus());
                             cOsc.start(t); cOsc.stop(t + 0.36);
                             scheduleChorus();
                         }, 450 + Math.random() * 650);
@@ -1267,14 +1555,14 @@
                     };
                     scheduleChorus();
 
-                } else if (targetId === 'mars' || targetId === 'venus' || targetId === 'mercury' || targetId === 'moon' || targetId === 'uranus' || targetId === 'neptune') {
+                } else if (['mars', 'venus', 'mercury', 'moon', 'uranus', 'neptune', 'io', 'europa', 'titan', 'pluto'].includes(targetId)) {
                     const noise = this.createLoopingNoiseBuffer();
                     const filter = this.ctx.createBiquadFilter();
                     const gain = this.ctx.createGain();
                     const padOsc = this.ctx.createOscillator();
 
-                    const freqMap = { mercury: 680, venus: 95, moon: 310, mars: 260, uranus: 420, neptune: 190 };
-                    const oscMap = { mercury: 293.66, venus: 65.41, moon: 196.0, mars: 146.83, uranus: 329.63, neptune: 110.0 };
+                    const freqMap = { mercury: 680, venus: 95, moon: 310, mars: 260, uranus: 420, neptune: 190, io: 140, europa: 520, titan: 120, pluto: 360 };
+                    const oscMap = { mercury: 293.66, venus: 65.41, moon: 196.0, mars: 146.83, uranus: 329.63, neptune: 110.0, io: 73.42, europa: 246.94, titan: 87.31, pluto: 220.0 };
 
                     padOsc.type = targetId === 'venus' ? 'sawtooth' : 'sine';
                     padOsc.frequency.setValueAtTime(oscMap[targetId], now);
@@ -1283,9 +1571,9 @@
                     filter.frequency.setValueAtTime(freqMap[targetId], now);
                     filter.Q.setValueAtTime(targetId === 'moon' ? 8.0 : 3.5, now);
 
-                    gain.gain.setValueAtTime(targetId === 'moon' ? 0.04 : 0.11, now);
+                    gain.gain.setValueAtTime((targetId === 'moon' || targetId === 'pluto') ? 0.04 : 0.11, now);
 
-                    noise.connect(filter); padOsc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                    noise.connect(filter); padOsc.connect(filter); filter.connect(gain); gain.connect(this.synthBus());
                     noise.start(); padOsc.start();
                     this.primaryOsc = padOsc; this.mainFilter = filter;
                     this.activeNodes.push(noise, padOsc, filter, gain);
@@ -1299,7 +1587,7 @@
                     osc2.type = 'triangle'; osc2.frequency.setValueAtTime(123.47, now);
                     filter.type = 'lowpass'; filter.frequency.setValueAtTime(240, now); filter.Q.setValueAtTime(5.5, now);
                     gain.gain.setValueAtTime(0.13, now);
-                    osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                    osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(this.synthBus());
                     osc1.start(); osc2.start();
                     this.primaryOsc = osc1; this.secondaryOsc = osc2; this.mainFilter = filter;
                     this.activeNodes.push(osc1, osc2, filter, gain);
@@ -1311,7 +1599,7 @@
                     humOsc.type = 'sawtooth'; humOsc.frequency.setValueAtTime(110, now);
                     filter.type = 'bandpass'; filter.frequency.setValueAtTime(340, now);
                     gain.gain.setValueAtTime(0.08, now);
-                    humOsc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                    humOsc.connect(filter); filter.connect(gain); gain.connect(this.synthBus());
                     humOsc.start();
                     this.primaryOsc = humOsc; this.mainFilter = filter;
                     this.activeNodes.push(humOsc, filter, gain);
@@ -1329,7 +1617,7 @@
                             pOsc.frequency.exponentialRampToValueAtTime(140, t + 0.035);
                             pGain.gain.setValueAtTime(0.07, t);
                             pGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
-                            pOsc.connect(pGain); pGain.connect(this.ctx.destination);
+                            pOsc.connect(pGain); pGain.connect(this.synthBus());
                             pOsc.start(t); pOsc.stop(t + 0.045);
                             schedulePulsarBeat();
                         }, beatInterval);
@@ -1346,7 +1634,7 @@
                     droneSubOsc.type = 'sine'; droneSubOsc.frequency.setValueAtTime(34, now);
                     droneFilter.type = 'lowpass'; droneFilter.frequency.setValueAtTime(160, now); droneFilter.Q.setValueAtTime(4.5, now);
                     droneGain.gain.setValueAtTime(0.15, now);
-                    droneOsc.connect(droneFilter); droneSubOsc.connect(droneFilter); droneFilter.connect(droneGain); droneGain.connect(this.ctx.destination);
+                    droneOsc.connect(droneFilter); droneSubOsc.connect(droneFilter); droneFilter.connect(droneGain); droneGain.connect(this.synthBus());
                     droneOsc.start(); droneSubOsc.start();
 
                     const whiteNoise = this.createLoopingNoiseBuffer();
@@ -1354,7 +1642,7 @@
                     thrusterFilter.type = 'bandpass'; thrusterFilter.frequency.setValueAtTime(320, now);
                     const thrusterGain = this.ctx.createGain();
                     thrusterGain.gain.setValueAtTime(0.05, now);
-                    whiteNoise.connect(thrusterFilter); thrusterFilter.connect(thrusterGain); thrusterGain.connect(this.ctx.destination);
+                    whiteNoise.connect(thrusterFilter); thrusterFilter.connect(thrusterGain); thrusterGain.connect(this.synthBus());
                     whiteNoise.start();
 
                     this.primaryOsc = droneOsc; this.secondaryOsc = droneSubOsc;
@@ -1375,7 +1663,7 @@
                             osc.frequency.exponentialRampToValueAtTime(180, t + 0.018);
                             gain.gain.setValueAtTime(0.03 + proximity * 0.08, t);
                             gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.018);
-                            osc.connect(gain); gain.connect(this.ctx.destination);
+                            osc.connect(gain); gain.connect(this.synthBus());
                             osc.start(t); osc.stop(t + 0.02);
                             scheduleNextClick();
                         }, minDelay * (0.5 + Math.random()));
@@ -1418,9 +1706,21 @@
             }
 
             updateByTelemetry(rs) {
-                if (!this.isPlaying || !this.ctx || !this.primaryOsc) return;
+                if (!this.isPlaying || !this.ctx) return;
                 const now = this.ctx.currentTime;
                 const prox = Math.max(0, Math.min(1, state.descentPercent / 100));
+
+                if (this.recording && this.recordingOk) {
+                    if (this.recording.direct) {
+                        this.recording.el.volume = Math.min(1, 0.55 + prox * 0.45);
+                    } else {
+                        this.recording.filter.frequency.setTargetAtTime(900 + Math.pow(prox, 1.6) * 15000, now, 0.15);
+                        this.recording.gain.gain.setTargetAtTime(0.55 + prox * 0.45, now, 0.2);
+                    }
+                    const rate = Math.max(0.5, Math.min(1, 1 / Math.max(1, state.gamma)));
+                    this.recording.el.playbackRate = rate;
+                }
+                if (!this.primaryOsc) return;
 
                 if (state.currentTarget === 'gargantua') {
                     const baseFreq = 72 - prox * 44;
@@ -1438,6 +1738,9 @@
             stopAll() {
                 this.isPlaying = false;
                 this.clearCurrentNodes();
+                if (this.recording) this.recording.el.pause();
+                this.recording = null;
+                this.recordingOk = false;
             }
         }
 
@@ -1455,7 +1758,8 @@
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, isCoarsePointer ? 1.5 : 2));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.25;
         container.appendChild(renderer.domElement);
@@ -1478,6 +1782,8 @@
         controls.target.set(0, -1.05, 0);
 
         const sharedUniforms = {
+            uSunDirView: { value: new THREE.Vector3(0.7, 0.3, 0.6) },
+            uDetail: { value: 0.0 },
             uTime: { value: 0 },
             uRedshiftFactor: { value: 0.0 },
             uCameraDist: { value: 28.0 }
@@ -1702,6 +2008,40 @@
                         g = Math.min(255, 86 + streak * 35 + cirrus);
                         b = Math.min(255, 212 + streak * 38 + cirrus * 0.5);
                         elev = 128 + cirrus * 0.3;
+                    } else if (bodyId === 'io') {
+                        const n = fbm2D(u * 9, v * 4.5, 5);
+                        const sulfur = fbm2D(u * 22 + 3.1, v * 11, 4);
+                        r = 214 + n * 40; g = 178 + n * 44 - sulfur * 30; b = 70 + sulfur * 40;
+                        const volc = smoothNoise(u * 38, v * 19);
+                        if (volc > 0.9) { const k = (volc - 0.9) * 10; r = r * (1 - k) + 40 * k; g = g * (1 - k) + 22 * k; b = b * (1 - k) + 14 * k; }
+                        else if (volc > 0.84) { const k = (volc - 0.84) * 16; r = r * (1 - k) + 190 * k; g = g * (1 - k) + 70 * k; b = b * (1 - k) + 30 * k; }
+                        if (lat > 0.7) { const k = (lat - 0.7) / 0.3; r -= k * 70; g -= k * 60; b -= k * 20; }
+                        elev = 110 + n * 90 - (volc > 0.9 ? 60 : 0);
+                    } else if (bodyId === 'europa') {
+                        const n = fbm2D(u * 8, v * 4, 5);
+                        r = 214 + n * 30; g = 204 + n * 28; b = 188 + n * 26;
+                        let crack = 0;
+                        for (let k = 0; k < 5; k++) {
+                            const w = Math.abs(Math.sin((u * (6 + k * 3.7) + v * (4 - k * 1.9) + fbm2D(u * 5 + k, v * 5, 3) * 0.9) * Math.PI * 2));
+                            crack = Math.max(crack, Math.pow(1 - w, 22));
+                        }
+                        r -= crack * 70; g -= crack * 120; b -= crack * 140;
+                        if (smoothNoise(u * 14, v * 7) > 0.82) { r -= 40; g -= 55; b -= 60; }
+                        elev = 140 - crack * 70 + n * 30;
+                    } else if (bodyId === 'titan') {
+                        const n = fbm2D(u * 6, v * 3, 5);
+                        const band = Math.sin(v * Math.PI * 6) * 6;
+                        r = 196 + n * 34 + band; g = 128 + n * 30 + band; b = 52 + n * 18;
+                        if (lat > 0.72 && smoothNoise(u * 10, v * 5) > 0.55) { r -= 70; g -= 55; b -= 20; }
+                        elev = 128 + n * 30;
+                    } else if (bodyId === 'pluto') {
+                        const n = fbm2D(u * 9, v * 4.5, 5);
+                        r = 196 + n * 40; g = 160 + n * 36; b = 128 + n * 30;
+                        const hx = (u - 0.52) * 2.2, hy = (v - 0.52) * 2.6;
+                        const heart = Math.pow(hx * hx + hy * hy - 0.02, 3) - hx * hx * hy * hy * hy * 1.6;
+                        if (heart < 0 && Math.abs(hx) < 0.75) { r = 236 + n * 15; g = 226 + n * 15; b = 214 + n * 15; }
+                        if (v > 0.5 && v < 0.72 && (u < 0.32 || u > 0.86)) { r = 86 + n * 40; g = 46 + n * 24; b = 34 + n * 18; }
+                        elev = 120 + n * 80 + (heart < 0 ? -30 : 0);
                     }
 
                     data[idx] = Math.max(0, Math.min(255, r));
@@ -1730,45 +2070,208 @@
         `;
         const atmosphereFragmentShader = `
             uniform vec3 uAtmoColor;
+            uniform vec3 uSunDirView;
+            uniform float uAtmoStrength;
             varying vec3 vNormal;
             void main() {
                 float intensity = pow(0.68 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.8);
-                gl_FragColor = vec4(uAtmoColor, clamp(intensity * 0.95, 0.0, 0.85));
+                float lit = 0.25 + 0.95 * smoothstep(-0.35, 0.6, dot(-vNormal, normalize(uSunDirView)) * -1.0);
+                gl_FragColor = vec4(uAtmoColor * lit * 1.15, clamp(intensity * 0.95 * lit * uAtmoStrength, 0.0, 0.9));
             }
         `;
 
+        // Adds close-range surface detail and (optionally) city lights on the night side.
+        function enhancePlanetMaterial(mat, opts = {}) {
+            const detailStrength = (opts.detail ?? 0.32).toFixed(3);
+            mat.customProgramCacheKey = () => `planet-${detailStrength}-${opts.night ? 1 : 0}`;
+            mat.onBeforeCompile = (shader) => {
+                shader.uniforms.uSunDirView = sharedUniforms.uSunDirView;
+                shader.uniforms.uDetail = sharedUniforms.uDetail;
+                shader.fragmentShader = `
+                    uniform vec3 uSunDirView;
+                    uniform float uDetail;
+                    float dHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+                    float dNoise(vec2 p) {
+                        vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+                        return mix(mix(dHash(i), dHash(i + vec2(1.0, 0.0)), f.x), mix(dHash(i + vec2(0.0, 1.0)), dHash(i + vec2(1.0, 1.0)), f.x), f.y);
+                    }
+                    float dFbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) { v += a * dNoise(p); p *= 2.1; a *= 0.5; } return v; }
+                ` + shader.fragmentShader;
+                shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+                    #include <map_fragment>
+                    #ifdef USE_MAP
+                    float detailN = dFbm(vUv * vec2(320.0, 160.0)) * 0.6 + dFbm(vUv * vec2(1400.0, 700.0)) * 0.4;
+                    diffuseColor.rgb *= mix(1.0, 0.72 + detailN * 0.56, uDetail * ${detailStrength});
+                    #endif
+                `);
+                if (opts.night) {
+                    shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', `
+                        #include <emissivemap_fragment>
+                        float nightMask = 1.0 - smoothstep(-0.12, 0.22, dot(normal, normalize(uSunDirView)));
+                        totalEmissiveRadiance *= nightMask;
+                    `);
+                }
+            };
+            mat.needsUpdate = true;
+        }
+
+        // Soft additive halo used for stars, atmospheres and the pulsar.
+        function makeGlowSprite(color, size, opacity = 1.0) {
+            const c = document.createElement('canvas');
+            c.width = c.height = 256;
+            const g = c.getContext('2d');
+            const col = new THREE.Color(color);
+            const rgb = `${Math.round(col.r * 255)},${Math.round(col.g * 255)},${Math.round(col.b * 255)}`;
+            const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+            grad.addColorStop(0, `rgba(${rgb},1)`);
+            grad.addColorStop(0.3, `rgba(${rgb},0.75)`);
+            grad.addColorStop(0.55, `rgba(${rgb},0.28)`);
+            grad.addColorStop(0.8, `rgba(${rgb},0.07)`);
+            grad.addColorStop(1, `rgba(${rgb},0)`);
+            g.fillStyle = grad;
+            g.fillRect(0, 0, 256, 256);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+                map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending,
+                transparent: true, depthWrite: false, opacity
+            }));
+            sprite.scale.set(size, size, 1);
+            return sprite;
+        }
+
+        const THREE_PLANETS = 'https://raw.githubusercontent.com/mrdoob/three.js/r128/examples/textures/planets/';
+        function loadTextureWithFallback(urls, onLoad, onFail) {
+            const list = urls.filter(Boolean);
+            // Opening the file directly (file://) blocks local textures in WebGL: also try the public copy.
+            urls.filter(u => u && u.startsWith(TEX)).forEach(u => {
+                const name = u.slice(TEX.length);
+                if (/^(earth_|moon_1024)/.test(name)) list.push(THREE_PLANETS + name);
+            });
+            const tryAt = (i) => {
+                if (i >= list.length) { if (onFail) onFail(); return; }
+                textureLoader.load(list[i], onLoad, undefined, () => tryAt(i + 1));
+            };
+            tryAt(0);
+        }
+
+        const sunFragmentShader = `
+            uniform float uTime;
+            uniform sampler2D uMap;
+            uniform float uHasMap;
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            float sHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+            float sNoise(vec2 p) {
+                vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+                return mix(mix(sHash(i), sHash(i + vec2(1.0, 0.0)), f.x), mix(sHash(i + vec2(0.0, 1.0)), sHash(i + vec2(1.0, 1.0)), f.x), f.y);
+            }
+            float sFbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 5; i++) { v += a * sNoise(p); p *= 2.07; a *= 0.5; } return v; }
+            void main() {
+                vec2 uv = vUv;
+                float t = uTime * 0.06;
+                vec2 warp = vec2(sFbm(uv * vec2(18.0, 9.0) + t), sFbm(uv * vec2(18.0, 9.0) - t + 4.3));
+                float gran = sFbm(uv * vec2(90.0, 45.0) + warp * 2.2 + vec2(t * 2.0, 0.0));
+                float cells = sFbm(uv * vec2(260.0, 130.0) - warp * 3.0 + t * 3.0);
+                vec3 base = mix(vec3(1.0, 0.42, 0.04), vec3(1.0, 0.86, 0.45), gran);
+                if (uHasMap > 0.5) base = mix(base, texture2D(uMap, uv + warp * 0.004).rgb * vec3(1.15, 1.0, 0.85), 0.45);
+                base *= 0.78 + cells * 0.45;
+                float spots = smoothstep(0.72, 0.8, sFbm(uv * vec2(14.0, 7.0) + vec2(t * 0.4, 1.7)));
+                base *= 1.0 - spots * 0.75 * smoothstep(0.25, 0.4, abs(uv.y - 0.5)) * (1.0 - smoothstep(0.4, 0.5, abs(uv.y - 0.5)));
+                float mu = clamp(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0, 1.0);
+                float limb = 0.35 + 0.65 * pow(mu, 0.55);
+                vec3 col = base * limb * 1.35 + vec3(1.0, 0.5, 0.1) * pow(1.0 - mu, 3.0) * 0.6;
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `;
+
+        // Round, soft dot for every particle system (default GL points are squares).
+        const roundDotTexture = (() => {
+            const c = document.createElement('canvas');
+            c.width = c.height = 64;
+            const g = c.getContext('2d');
+            const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.4, 'rgba(255,255,255,0.85)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = grad;
+            g.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(c);
+        })();
+
+        const ATMO_STRENGTH = { titan: 1.8, venus: 1.4, earth: 1.25, pluto: 0.7, io: 0.45, europa: 0.5, mars: 0.8 };
+        const ATMO_SCALE = { titan: 1.09, venus: 1.06, pluto: 1.035, io: 1.03, europa: 1.03 };
+
         function createPhotorealisticPlanet(bodyId, radius = 2.5, hasAtmosphere = true) {
             const cfg = ASTRO_TARGETS[bodyId];
-            const { colorTex, bumpTex } = generateHiResPlanetaryTextures(bodyId);
+            // Real maps load first; the (slow) procedural texture is only built if they fail.
+            const useProcedural = () => generateHiResPlanetaryTextures(bodyId);
+            const { colorTex, bumpTex } = cfg.textureUrl ? { colorTex: null, bumpTex: null } : useProcedural();
+            const reliefFromMap = ['moon', 'mercury', 'mars', 'io', 'europa', 'pluto'].includes(bodyId);
 
             let mat;
             if (bodyId === 'sun') {
-                mat = new THREE.MeshBasicMaterial({ map: colorTex });
+                mat = new THREE.ShaderMaterial({
+                    uniforms: { uTime: sharedUniforms.uTime, uMap: { value: colorTex }, uHasMap: { value: 0.0 } },
+                    vertexShader: commonVertexShader,
+                    fragmentShader: sunFragmentShader
+                });
             } else {
                 mat = new THREE.MeshPhongMaterial({
                     map: colorTex,
                     bumpMap: bumpTex,
+                    color: colorTex ? 0xffffff : new THREE.Color(...(cfg.atmoColor || [0.5, 0.5, 0.5])).multiplyScalar(0.55),
                     bumpScale: (bodyId === 'moon' || bodyId === 'mercury') ? 0.11 : (bodyId === 'mars' ? 0.065 : 0.012),
-                    specular: new THREE.Color(bodyId === 'earth' ? 0x335577 : (bodyId === 'saturn' ? 0x050505 : 0x111111)),
-                    shininess: bodyId === 'earth' ? 22 : (bodyId === 'saturn' ? 3 : 6)
+                    specular: new THREE.Color(bodyId === 'earth' ? 0x1c2c3c : (bodyId === 'saturn' ? 0x050505 : 0x111111)),
+                    shininess: bodyId === 'earth' ? 40 : (bodyId === 'saturn' ? 3 : 6)
                 });
             }
 
-            if (cfg.textureUrl && bodyId !== 'saturn') {
-                textureLoader.load(cfg.textureUrl, (nasaTex) => {
+            if (cfg.textureUrl) {
+                loadTextureWithFallback([cfg.textureUrl, cfg.textureFallback, cfg.textureFallback2], (nasaTex) => {
                     nasaTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                    mat.map = nasaTex;
+                    if (mat.uniforms && mat.uniforms.uMap) {
+                        mat.uniforms.uMap.value = nasaTex;
+                        mat.uniforms.uHasMap.value = 1.0;
+                    } else {
+                        mat.map = nasaTex;
+                        mat.color.set(0xffffff);
+                        if (reliefFromMap && !mat.bumpMap) { mat.bumpMap = nasaTex; mat.bumpScale *= 0.45; }
+                        mat.needsUpdate = true;
+                    }
+                }, () => {
+                    // No real map reachable: build the procedural one off the critical path.
+                    setTimeout(() => {
+                        const proc = useProcedural();
+                        if (mat.uniforms && mat.uniforms.uMap) {
+                            mat.uniforms.uMap.value = proc.colorTex;
+                        } else {
+                            mat.map = proc.colorTex;
+                            mat.bumpMap = proc.bumpTex;
+                            mat.color.set(0xffffff);
+                            mat.needsUpdate = true;
+                        }
+                    }, 0);
+                });
+            }
+            if (cfg.nightUrl && mat.isMeshPhongMaterial) {
+                loadTextureWithFallback([cfg.nightUrl], (nightTex) => {
+                    mat.emissiveMap = nightTex;
+                    mat.emissive = new THREE.Color(0xffd9a0);
+                    mat.emissiveIntensity = 1.6;
                     mat.needsUpdate = true;
                 });
             }
+            if (mat.isMeshPhongMaterial) {
+                const gasGiant = ['jupiter', 'saturn', 'uranus', 'neptune', 'venus', 'titan'].includes(bodyId);
+                enhancePlanetMaterial(mat, { detail: gasGiant ? 0.1 : 0.38, night: !!cfg.nightUrl });
+            }
             if (cfg.normalUrl) {
-                textureLoader.load(cfg.normalUrl, (normTex) => {
+                loadTextureWithFallback([cfg.normalUrl], (normTex) => {
                     mat.normalMap = normTex;
                     mat.needsUpdate = true;
                 });
             }
             if (cfg.specularUrl) {
-                textureLoader.load(cfg.specularUrl, (specTex) => {
+                loadTextureWithFallback([cfg.specularUrl], (specTex) => {
                     mat.specularMap = specTex;
                     mat.needsUpdate = true;
                 });
@@ -1779,12 +2282,14 @@
 
             if (hasAtmosphere && cfg.atmoColor) {
                 const atmoMesh = new THREE.Mesh(
-                    new THREE.SphereGeometry(radius * 1.045, 64, 64),
+                    new THREE.SphereGeometry(radius * (ATMO_SCALE[bodyId] ?? 1.045), 64, 64),
                     new THREE.ShaderMaterial({
                         vertexShader: atmosphereVertexShader,
                         fragmentShader: atmosphereFragmentShader,
                         uniforms: {
-                            uAtmoColor: { value: new THREE.Color(...cfg.atmoColor) }
+                            uAtmoColor: { value: new THREE.Color(...cfg.atmoColor) },
+                            uSunDirView: sharedUniforms.uSunDirView,
+                            uAtmoStrength: { value: ATMO_STRENGTH[bodyId] ?? 1.0 }
                         },
                         blending: THREE.AdditiveBlending,
                         side: THREE.BackSide,
@@ -1803,7 +2308,30 @@
             new THREE.RingGeometry(2.8, 6.2, 64, 16),
             new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.28, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
         );
+        sunCorona.visible = false;
         targetGroups.sun.add(sunCorona);
+        targetGroups.sun.add(makeGlowSprite(0xff9a3c, 15, 1.0));
+        targetGroups.sun.add(makeGlowSprite(0xfff1c1, 8.5, 0.8));
+
+        // Solar prominences: glowing loops that slowly breathe around the limb.
+        const prominenceGroup = new THREE.Group();
+        for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2 + Math.random() * 0.4;
+            const h = 0.35 + Math.random() * 0.75;
+            const curve = new THREE.QuadraticBezierCurve3(
+                new THREE.Vector3(Math.cos(a - 0.12) * 2.8, Math.sin(a - 0.12) * 2.8, 0),
+                new THREE.Vector3(Math.cos(a) * (2.85 + h * 1.6), Math.sin(a) * (2.85 + h * 1.6), 0),
+                new THREE.Vector3(Math.cos(a + 0.12) * 2.8, Math.sin(a + 0.12) * 2.8, 0)
+            );
+            const loop = new THREE.Mesh(
+                new THREE.TubeGeometry(curve, 32, 0.035 + Math.random() * 0.03, 8, false),
+                new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
+            );
+            prominenceGroup.add(loop);
+        }
+        const prominenceBillboard = new THREE.Group();
+        prominenceBillboard.add(prominenceGroup);
+        targetGroups.sun.add(prominenceBillboard);
 
         const mercuryMesh = createPhotorealisticPlanet('mercury', 2.1, false);
         const venusMesh = createPhotorealisticPlanet('venus', 2.45, true);
@@ -1815,7 +2343,7 @@
             blending: THREE.AdditiveBlending,
             depthWrite: false
         });
-        textureLoader.load(ASTRO_TARGETS.earth.cloudsUrl, (cloudTex) => {
+        loadTextureWithFallback([ASTRO_TARGETS.earth.cloudsUrl], (cloudTex) => {
             earthCloudsMat.map = cloudTex;
             earthCloudsMat.needsUpdate = true;
         });
@@ -1823,12 +2351,68 @@
         targetGroups.earth.add(earthCloudsMesh);
 
         const moonMesh = createPhotorealisticPlanet('moon', 1.95, false);
+        const ioMesh = createPhotorealisticPlanet('io', 1.9, true);
+        const europaMesh = createPhotorealisticPlanet('europa', 1.85, true);
+        const titanMesh = createPhotorealisticPlanet('titan', 2.1, true);
+        const plutoMesh = createPhotorealisticPlanet('pluto', 1.7, true);
+
+        // Io: sulfur volcanic plumes (Pele-style umbrellas) made of particles.
+        const ioPlumeGeo = new THREE.BufferGeometry();
+        const ioPlumeCount = 1400;
+        const ioPlumePos = new Float32Array(ioPlumeCount * 3);
+        const ioVents = [[0.6, 0.35], [-1.1, 0.9], [2.3, -0.4], [-2.6, -0.8]];
+        for (let i = 0; i < ioPlumeCount; i++) {
+            const vent = ioVents[i % ioVents.length];
+            const lon = vent[0], lat = vent[1];
+            const t = Math.random();
+            const spread = Math.sin(t * Math.PI) * 0.32;
+            const ang = Math.random() * Math.PI * 2;
+            const r = 1.9 + t * 0.9;
+            const la = lat + Math.sin(ang) * spread, lo = lon + Math.cos(ang) * spread;
+            ioPlumePos[i * 3] = Math.cos(la) * Math.cos(lo) * r;
+            ioPlumePos[i * 3 + 1] = Math.sin(la) * r;
+            ioPlumePos[i * 3 + 2] = Math.cos(la) * Math.sin(lo) * r;
+        }
+        ioPlumeGeo.setAttribute('position', new THREE.BufferAttribute(ioPlumePos, 3));
+        const ioPlumes = new THREE.Points(ioPlumeGeo, new THREE.PointsMaterial({
+            map: roundDotTexture, alphaTest: 0.01,
+            color: 0xffe08a, size: 0.06, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false
+        }));
+        ioMesh.add(ioPlumes);
+
+        // Jupiter hanging in Io's / Europa's sky, Saturn behind Titan: sense of scale.
+        function addParentPlanetBackdrop(group, texUrl, radius, pos, tint) {
+            const m = new THREE.MeshPhongMaterial({ color: tint, shininess: 4 });
+            loadTextureWithFallback([texUrl], (tx) => { m.map = tx; m.color.set(0xffffff); m.needsUpdate = true; });
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 64, 64), m);
+            mesh.position.set(...pos);
+            mesh.userData.backdrop = true;
+            group.add(mesh);
+            return mesh;
+        }
+        const ioJupiter = addParentPlanetBackdrop(targetGroups.io, TEX + 'jupiter.jpg', 16, [-38, 10, -70], 0xd9b38c);
+        const europaJupiter = addParentPlanetBackdrop(targetGroups.europa, TEX + 'jupiter.jpg', 14, [42, -6, -80], 0xd9b38c);
+        const titanSaturn = addParentPlanetBackdrop(targetGroups.titan, TEX + 'saturn.jpg', 13, [-40, 14, -85], 0xe8d5a0);
+        const titanSaturnRing = new THREE.Mesh(
+            new THREE.RingGeometry(16, 29, 128, 4),
+            new THREE.MeshBasicMaterial({ color: 0xe9dcc0, side: THREE.DoubleSide, transparent: true, opacity: 0.45 })
+        );
+        titanSaturnRing.position.copy(titanSaturn.position);
+        titanSaturnRing.rotation.x = Math.PI * 0.44;
+        titanSaturnRing.userData.backdrop = true;
+        targetGroups.titan.add(titanSaturnRing);
+
+        // Pluto's companion Charon.
+        const charon = new THREE.Mesh(new THREE.SphereGeometry(0.85, 48, 48), new THREE.MeshPhongMaterial({ color: 0x9a948e, shininess: 3 }));
+        charon.position.set(9.5, 1.2, -6);
+        targetGroups.pluto.add(charon);
+        charon.userData.genesisLate = 'charon';
         const marsMesh = createPhotorealisticPlanet('mars', 2.25, true);
 
         const uranusMesh = createPhotorealisticPlanet('uranus', 2.4, true);
         const uranusRings = new THREE.Mesh(
             new THREE.RingGeometry(3.2, 5.8, 96, 16),
-            new THREE.MeshBasicMaterial({ color: 0x7dd3fc, side: THREE.DoubleSide, transparent: true, opacity: 0.28 })
+            new THREE.MeshBasicMaterial({ color: 0x7dd3fc, side: THREE.DoubleSide, transparent: true, opacity: 0.12, depthWrite: false })
         );
         uranusRings.rotation.y = Math.PI * 0.08;
         targetGroups.uranus.add(uranusRings);
@@ -1909,6 +2493,7 @@
         saturnRingsPivot.rotation.x = Math.PI * 0.42;
         saturnRingsPivot.rotation.y = 0.12;
         targetGroups.saturn.add(saturnRingsPivot);
+        saturnRingsPivot.userData.genesisLate = 'rings';
 
         const saturnRings = new THREE.Mesh(
             new THREE.RingGeometry(2.85, 11.8, 180, 96),
@@ -1950,7 +2535,9 @@
         const saturnIceParticles = new THREE.Points(
             ringIceGeo,
             new THREE.PointsMaterial({
-                size: 0.085,
+                map: roundDotTexture,
+                depthWrite: false,
+                size: 0.05,
                 vertexColors: true,
                 transparent: true,
                 opacity: 0.85,
@@ -1981,14 +2568,16 @@
         const jupiterSphere = createPhotorealisticPlanet('jupiter', 2.75, true);
         const magnetoTorus = new THREE.Mesh(
             new THREE.TorusGeometry(6.2, 2.2, 20, 64),
-            new THREE.MeshBasicMaterial({ color: 0xb026ff, wireframe: true, transparent: true, opacity: 0.15 })
+            new THREE.MeshBasicMaterial({ color: 0xb026ff, wireframe: true, transparent: true, opacity: 0.05, depthWrite: false })
         );
         magnetoTorus.rotation.x = Math.PI * 0.46;
         targetGroups.jupiter.add(magnetoTorus);
 
         const pulsarCore = new THREE.Mesh(new THREE.SphereGeometry(1.15, 48, 48), new THREE.MeshBasicMaterial({ color: 0xdcfce7 }));
         targetGroups.pulsar.add(pulsarCore);
-        const pulsarCrust = new THREE.Mesh(new THREE.SphereGeometry(1.22, 24, 24), new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.6 }));
+        const pulsarGlow = makeGlowSprite(0x7df9ff, 9, 0.9);
+        targetGroups.pulsar.add(pulsarGlow);
+        const pulsarCrust = new THREE.Mesh(new THREE.SphereGeometry(1.22, 24, 24), new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.22 }));
         targetGroups.pulsar.add(pulsarCrust);
         const jetMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.38, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
         const northJet = new THREE.Mesh(new THREE.ConeGeometry(1.6, 14, 32, 1, true), jetMat);
@@ -2007,10 +2596,10 @@
 
         const horizonMesh = new THREE.Mesh(new THREE.SphereGeometry(2.0, 64, 64), new THREE.MeshBasicMaterial({ color: 0x000000 }));
         targetGroups.gargantua.add(horizonMesh);
-        const photonSphereMesh = new THREE.Mesh(new THREE.SphereGeometry(3.0, 32, 32), new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.13 }));
+        const photonSphereMesh = new THREE.Mesh(new THREE.SphereGeometry(3.0, 32, 32), new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.05, depthWrite: false }));
         targetGroups.gargantua.add(photonSphereMesh);
         const ergoGeo = new THREE.SphereGeometry(4.4, 36, 24); ergoGeo.scale(1.28, 0.78, 1.28);
-        const ergosphereMesh = new THREE.Mesh(ergoGeo, new THREE.MeshBasicMaterial({ color: 0xffaa00, wireframe: true, transparent: true, opacity: 0.12 }));
+        const ergosphereMesh = new THREE.Mesh(ergoGeo, new THREE.MeshBasicMaterial({ color: 0xffaa00, wireframe: true, transparent: true, opacity: 0.045, depthWrite: false }));
         targetGroups.gargantua.add(ergosphereMesh);
 
         const accretionFragmentShader = `
@@ -2159,7 +2748,7 @@
         }
         particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        const starField = new THREE.Points(particleGeo, new THREE.PointsMaterial({ size: 0.16, vertexColors: true, transparent: true, opacity: 0.92 }));
+        const starField = new THREE.Points(particleGeo, new THREE.PointsMaterial({ map: roundDotTexture, size: 0.22, vertexColors: true, transparent: true, opacity: 0.92, depthWrite: false }));
         scene.add(starField);
 
         const dom = {
@@ -2270,7 +2859,7 @@
             } catch (err) {
                 dom.nasaApiStatus.textContent = 'NASA API: LOCAL CACHE';
                 const fallbackItem = [{
-                    imgUrl: cfg.textureUrl || `https://placehold.co/800x500/05050e/00f0ff?text=${encodeURIComponent(cfg.name)}`,
+                    imgUrl: (cfg.id === 'io' ? null : cfg.textureUrl) || `https://placehold.co/800x500/05050e/00f0ff?text=${encodeURIComponent(cfg.name)}`,
                     title: `${cfg.name} — Telemetría de Misión Espacial`,
                     desc: `${cfg.summary} Radio real: ${cfg.realRadiusText} | Radio de Schwarzschild: ${cfg.rsRealText}.`,
                     center: 'NASA / JPL-Caltech',
@@ -2346,6 +2935,7 @@
         populateCompareTable();
 
         function switchTarget(targetId) {
+            if (typeof genesis !== 'undefined' && genesis.active) stopGenesis();
             state.currentTarget = targetId;
             state.spaghettiPreset = targetId;
             const cfg = ASTRO_TARGETS[targetId];
@@ -2357,9 +2947,9 @@
             document.querySelectorAll('.target-btn').forEach(btn => {
                 const isSelected = btn.getAttribute('data-target') === targetId;
                 if (isSelected) {
-                    btn.className = 'target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-singularity-cyan bg-singularity-cyan/20 text-singularity-cyan glow-cyan flex items-center gap-2';
+                    btn.className = 'target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-singularity-cyan bg-singularity-cyan/20 text-singularity-cyan glow-cyan flex items-center gap-2';
                 } else {
-                    btn.className = 'target-btn w-full text-left px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2';
+                    btn.className = 'target-btn shrink-0 w-auto md:w-full text-left px-2.5 md:px-2 py-1.5 md:py-1 rounded-lg font-mono text-[10px] sm:text-[11px] font-bold transition-all duration-200 border border-transparent text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2';
                 }
             });
 
@@ -2453,7 +3043,8 @@
 
             const bottomHudDeck = document.getElementById('bottom-hud-deck');
             const isHudCollapsed = bottomHudDeck && bottomHudDeck.classList.contains('hidden');
-            const yOffsetTarget = isHudCollapsed ? 0.0 : (-1.05 + prox * 0.45);
+            const portraitLift = window.innerWidth < window.innerHeight ? -0.2 * targetZ : 0.0;
+            const yOffsetTarget = isHudCollapsed ? 0.0 : (-1.05 + portraitLift + prox * 0.45);
             controls.target.set(0, yOffsetTarget, 0);
 
             const offset = camera.position.clone().sub(controls.target);
@@ -2496,22 +3087,22 @@
             if (isCritical) {
                 dom.alarmOverlay.classList.add('alarm-active');
                 dom.statusPanel.className = 'glass-hud-crimson rounded-xl px-2.5 py-1.5 flex items-center gap-2.5 transition-all duration-300';
-                dom.telemetryPanel.className = 'lg:col-span-4 glass-hud-crimson rounded-xl p-2 transition-all duration-300 flex flex-col justify-between';
-                dom.storyCard.className = 'lg:col-span-5 glass-hud-crimson rounded-xl p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-300';
+                dom.telemetryPanel.className = 'order-3 lg:order-none lg:col-span-4 glass-hud-crimson rounded-xl p-2 transition-all duration-300 flex flex-col justify-between';
+                dom.storyCard.className = 'order-1 lg:order-none lg:col-span-5 glass-hud-crimson rounded-xl p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-300';
                 dom.systemBadge.textContent = t === 'sun' ? 'ALERTA TÉRMICA: 28G' : 'ALERTA: LÍMITE RELATIVISTA';
                 dom.systemBadge.className = 'text-[11px] font-mono font-bold text-singularity-crimson glow-crimson tracking-wide';
             } else if (isWarning) {
                 dom.alarmOverlay.classList.remove('alarm-active');
                 dom.statusPanel.className = 'glass-hud-amber rounded-xl px-2.5 py-1.5 flex items-center gap-2.5 transition-all duration-300';
-                dom.telemetryPanel.className = 'lg:col-span-4 glass-hud-amber rounded-xl p-2 transition-all duration-300 flex flex-col justify-between';
-                dom.storyCard.className = 'lg:col-span-5 glass-hud-amber rounded-xl p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-300';
+                dom.telemetryPanel.className = 'order-3 lg:order-none lg:col-span-4 glass-hud-amber rounded-xl p-2 transition-all duration-300 flex flex-col justify-between';
+                dom.storyCard.className = 'order-1 lg:order-none lg:col-span-5 glass-hud-amber rounded-xl p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-300';
                 dom.systemBadge.textContent = 'PRECAUCIÓN: CAMPO INTENSO';
                 dom.systemBadge.className = 'text-[11px] font-mono font-bold text-singularity-amber glow-amber tracking-wide';
             } else {
                 dom.alarmOverlay.classList.remove('alarm-active');
                 dom.statusPanel.className = 'glass-hud rounded-xl px-2.5 py-1.5 flex items-center gap-2.5 transition-all duration-300';
-                dom.telemetryPanel.className = 'lg:col-span-4 glass-hud rounded-xl p-2 transition-all duration-300 flex flex-col justify-between';
-                dom.storyCard.className = 'lg:col-span-5 glass-hud rounded-xl p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-300';
+                dom.telemetryPanel.className = 'order-3 lg:order-none lg:col-span-4 glass-hud rounded-xl p-2 transition-all duration-300 flex flex-col justify-between';
+                dom.storyCard.className = 'order-1 lg:order-none lg:col-span-5 glass-hud rounded-xl p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-300';
                 dom.systemBadge.textContent = 'SISTEMAS NOMINALES';
                 dom.systemBadge.className = 'text-[11px] font-mono font-bold text-singularity-cyan glow-cyan tracking-wide';
             }
@@ -2742,6 +3333,7 @@
                     audioEngine.playClickTone(860, 0.05);
                     state.ringSkimMode = false;
                     switchTarget(targetId);
+                    btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
                 }
             });
         });
@@ -2773,19 +3365,23 @@
             const miniBar = document.getElementById('mini-zoom-bar');
             const label = document.getElementById('toggle-bottom-hud-label');
             const icon = document.getElementById('toggle-bottom-hud-icon');
+            const shortLabel = document.getElementById('toggle-bottom-hud-short');
             if (!deck) return;
 
             const isHidden = deck.classList.toggle('hidden');
+            document.getElementById('toggle-bottom-hud-btn')?.setAttribute('aria-expanded', String(!isHidden));
             if (isHidden) {
                 miniBar?.classList.remove('hidden');
                 miniBar?.classList.add('flex');
                 if (label) label.textContent = 'EXPANDIR PANEL DE TELEMETRÍA';
+                if (shortLabel) shortLabel.textContent = 'MOSTRAR PANEL';
                 icon?.setAttribute('data-lucide', 'chevron-up');
                 controls.target.set(0, 0, 0);
             } else {
                 miniBar?.classList.add('hidden');
                 miniBar?.classList.remove('flex');
                 if (label) label.textContent = 'MINIMIZAR PANEL INFERIOR (VISTA DESPEJADA)';
+                if (shortLabel) shortLabel.textContent = 'OCULTAR PANEL';
                 icon?.setAttribute('data-lucide', 'chevron-down');
                 updateRelativityTelemetry(state.descentPercent);
             }
@@ -2850,12 +3446,13 @@
             state.audioEnabled = active;
             const audioLabel = document.getElementById('audio-label');
             const audioIcon = document.getElementById('audio-icon');
+            document.getElementById('audio-btn')?.setAttribute('aria-pressed', String(active));
             if (active) {
                 audioEngine.playClickTone(980, 0.06);
-                if (audioLabel) { audioLabel.textContent = 'SONIDO: ENCENDIDO'; audioLabel.className = 'font-mono text-[10px] sm:text-xs font-semibold text-singularity-cyan glow-cyan'; }
+                if (audioLabel) { audioLabel.textContent = 'SONIDO: ENCENDIDO'; audioLabel.className = 'hidden sm:inline font-mono text-[10px] sm:text-xs font-semibold text-singularity-cyan glow-cyan'; }
                 audioIcon?.setAttribute('data-lucide', 'volume-2');
             } else {
-                if (audioLabel) { audioLabel.textContent = 'SONIDO: APAGADO'; audioLabel.className = 'font-mono text-[10px] sm:text-xs font-semibold text-slate-300'; }
+                if (audioLabel) { audioLabel.textContent = 'SONIDO: APAGADO'; audioLabel.className = 'hidden sm:inline font-mono text-[10px] sm:text-xs font-semibold text-slate-300'; }
                 audioIcon?.setAttribute('data-lucide', 'volume-x');
             }
             lucide.createIcons();
@@ -2947,10 +3544,560 @@
             }
         });
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
+        // Keep the scene framed on any screen: widen the vertical FOV on portrait
+        // screens so the target never gets cropped at the sides.
+        const BASE_FOV = 60;
+        function fitViewport() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const aspect = w / h;
+            camera.aspect = aspect;
+            if (aspect < 1) {
+                const halfV = THREE.MathUtils.degToRad(BASE_FOV / 2);
+                const fov = 2 * THREE.MathUtils.radToDeg(Math.atan(Math.tan(halfV) / aspect * 0.8));
+                camera.fov = Math.min(90, Math.max(BASE_FOV, fov));
+            } else {
+                camera.fov = BASE_FOV;
+            }
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(w, h);
+        }
+        let resizeRaf = 0;
+        function scheduleFit() {
+            cancelAnimationFrame(resizeRaf);
+            resizeRaf = requestAnimationFrame(fitViewport);
+        }
+        window.addEventListener('resize', scheduleFit);
+        window.addEventListener('orientationchange', scheduleFit);
+        window.visualViewport?.addEventListener('resize', scheduleFit);
+        fitViewport();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            stopGenesis();
+            [dom.modalSpaghetti, dom.modalLaser, dom.modalCompare, dom.modalNasa].forEach(modal => {
+                if (modal && !modal.classList.contains('hidden')) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+            });
+        });
+
+
+        /* -------------------------------------------------------------------------- */
+        /* GÉNESIS: HOW EACH BODY FORMED (SCIENTIFIC TIMELINE, PARTICLE SIMULATION)    */
+        /* modes: 0 protoplanetary/circumplanetary disk accretion, 1 nebula collapse, */
+        /*        2 supernova shell, 3 gas infall onto a black hole                    */
+        /* -------------------------------------------------------------------------- */
+        const GENESIS_TYPES = {
+            rocky: { mode: 0, colors: [0xc79a6b, 0xffe2b8], growFrom: 0.38, growTo: 0.82 },
+            gas:   { mode: 4, colors: [0x9fd8ff, 0xffd59e], growFrom: 0.30, growTo: 0.86 },
+            star:  { mode: 1, colors: [0xff7a2a, 0xffe7a3], growFrom: 0.55, growTo: 0.8, flashAt: 0.62 },
+            nova:  { mode: 2, colors: [0x7df9ff, 0xff4fa3], growFrom: 0.22, growTo: 0.4, flashAt: 0.14 },
+            hole:  { mode: 3, colors: [0xffa040, 0x7df9ff], growFrom: 0.5, growTo: 0.9, flashAt: 0.72 }
+        };
+        // Camera framing per formation type: polar angle (phi), zoom % and orbit speed.
+        const GENESIS_CAMERA = {
+            rocky: { phi: 1.05, zoom: 14, spin: 0.9 },
+            gas:   { phi: 1.35, zoom: 4, spin: 0.5 },
+            star:  { phi: 0.75, zoom: 0, spin: 0.35 },
+            nova:  { phi: 1.45, zoom: 0, spin: 1.6 },
+            hole:  { phi: 1.2, zoom: 10, spin: 1.2 }
+        };
+        const GENESIS = {
+            sun: { fx: ['jets'], type: 'star', age: 'Hace 4,600 millones de años', steps: [
+                ['Una nube molecular colapsa', 'Una nube de gas y polvo de la Vía Láctea, probablemente empujada por la onda de choque de una supernova cercana, empieza a hundirse por su propia gravedad.'],
+                ['El giro la aplana en un disco', 'Al contraerse gira cada vez más rápido (conservación del momento angular) y se aplana. El centro se comprime y se calienta.'],
+                ['Ignición de la protoestrella', 'El núcleo alcanza unos 10 millones de °C y se enciende la fusión de hidrógeno en helio: la presión de la luz frena el colapso.'],
+                ['Nace el Sol', 'El 99.86% de la masa quedó en la estrella. El disco sobrante es la materia prima de todos los planetas.']
+            ] },
+            mercury: { fx: ['molten', { impact: { at: 0.62, size: 0.55, dir: [-1, 0.2, 0.5] } }], type: 'rocky', age: 'Hace 4,570 millones de años', steps: [
+                ['Solo roca y metal', 'Tan cerca del joven Sol el hielo se evapora: en el disco solo sobreviven granos de silicato y hierro.'],
+                ['De polvo a planetesimales', 'Los granos se pegan en guijarros y estos en planetesimales de kilómetros que chocan y se fusionan.'],
+                ['Un impacto gigante', 'Una colisión violenta pudo arrancar gran parte del manto rocoso de Mercurio.'],
+                ['Un planeta casi todo núcleo', 'Resultado: su núcleo de hierro ocupa el 85% del radio, el mayor proporcionalmente del Sistema Solar.']
+            ] },
+            venus: { fx: ['molten', { impact: { at: 0.5, size: 0.35, dir: [1, 0.3, 0.4] } }], type: 'rocky', age: 'Hace 4,560 millones de años', steps: [
+                ['Zona interior del disco', 'Venus crece con roca y metal en la región caliente del disco, muy parecida a la de la Tierra.'],
+                ['Choques de embriones', 'Embriones planetarios del tamaño de la Luna colisionan durante decenas de millones de años.'],
+                ['Volcanes y CO₂', 'Su vulcanismo libera enormes cantidades de CO₂ y sin océanos estables que lo absorban se dispara el efecto invernadero.'],
+                ['Un infierno gemelo', 'Hoy su superficie soporta 92 bar de presión y 465 °C, más caliente que Mercurio.']
+            ] },
+            earth: { fx: ['molten', { impact: { at: 0.62, size: 0.53, dir: [-1, 0.25, 0.6], debris: true } }], type: 'rocky', age: 'Hace 4,540 millones de años', steps: [
+                ['Acreción en el disco', 'Polvo y roca orbitando el Sol se aglomeran en planetesimales que chocan sin parar.'],
+                ['Una Tierra fundida', 'Los impactos la mantienen derretida: el hierro se hunde y forma el núcleo, la roca ligera flota y forma el manto.'],
+                ['El impacto de Theia', 'Hace ~4,500 millones de años un cuerpo del tamaño de Marte choca con la Tierra. Los escombros formarán la Luna.'],
+                ['Nacen los océanos', 'La corteza se enfría; el vapor volcánico y el agua de asteroides y cometas se condensan en océanos.']
+            ] },
+            moon: { fx: ['molten', { impact: { at: 0.22, size: 0.9, dir: [1, 0.15, 0.5], debris: true } }], type: 'rocky', age: 'Hace ~4,500 millones de años', steps: [
+                ['Theia impacta la joven Tierra', 'Un protoplaneta del tamaño de Marte golpea a la Tierra en un ángulo oblicuo.'],
+                ['Un anillo de roca vaporizada', 'Una nube de roca fundida y vapor queda en órbita alrededor de la Tierra.'],
+                ['La Luna se agrega', 'Los escombros se juntan en la Luna en muy poco tiempo, quizás en menos de un siglo.'],
+                ['Océano de magma', 'Al enfriarse forma la corteza clara de las tierras altas; después la lava rellena los mares oscuros.']
+            ] },
+            mars: { fx: ['molten', { impact: { at: 0.45, size: 0.25, dir: [-0.6, 0.6, 0.6] } }], type: 'rocky', age: 'Hace 4,600 millones de años', steps: [
+                ['Crecimiento veloz', 'Marte se forma en solo 2–4 millones de años, muy rápido para un planeta rocoso.'],
+                ['Júpiter le roba material', 'La migración de Júpiter vació su región del disco: Marte quedó con apenas el 11% de la masa terrestre.'],
+                ['Pierde su escudo', 'Su núcleo se enfrió, se apagó el campo magnético y el viento solar arrancó la mayor parte de su atmósfera.'],
+                ['Un desierto con ríos fósiles', 'Quedó frío y seco, con cauces de antiguos ríos y lagos como el cráter Jezero.']
+            ] },
+            jupiter: { fx: ['core'], type: 'gas', age: 'Hace ~4,600 millones de años', steps: [
+                ['Más allá de la línea de hielo', 'Lejos del Sol el agua se congela: hay mucho más material sólido para construir planetas.'],
+                ['Un núcleo de hielo y roca', 'En ~1 millón de años crece un núcleo de unas 10 masas terrestres.'],
+                ['Acreción desbocada de gas', 'Su gravedad empieza a tragar hidrógeno y helio del disco cada vez más rápido.'],
+                ['El primer planeta', 'Júpiter fue probablemente el primer planeta: 318 masas terrestres que moldearon todo el Sistema Solar.']
+            ] },
+            saturn: { fx: ['core', 'rings'], type: 'gas', age: 'Hace ~4,500 millones de años', steps: [
+                ['Núcleo helado lejano', 'Más lejos que Júpiter, su núcleo de hielo y roca crece más despacio.'],
+                ['Gas, pero tarde', 'Captura hidrógeno y helio mientras el disco se disipa: termina con 95 masas terrestres.'],
+                ['El planeta menos denso', 'Su densidad media es menor que la del agua: flotaría en un océano gigante.'],
+                ['Anillos jóvenes', 'Sus anillos podrían ser recientes: restos de una luna o cometa despedazado por la marea hace 100–400 millones de años.']
+            ] },
+            uranus: { fx: ['core', { impact: { at: 0.68, size: 0.45, dir: [1, -0.2, 0.5] } }, 'tilt'], type: 'gas', age: 'Hace ~4,500 millones de años', steps: [
+                ['Gigante de hielo', 'En la parte fría y externa del disco crece un núcleo de hielo de agua, amoníaco y metano.'],
+                ['Llegó tarde al gas', 'El gas del disco casi se había ido: solo capturó una envoltura delgada de hidrógeno y helio.'],
+                ['Un golpe que lo tumbó', 'Un impacto gigante, o varios, lo dejó girando de lado con una inclinación de 98°.'],
+                ['Migración hacia afuera', 'Según el modelo de Niza, los gigantes migraron y dispersaron cometas por todo el Sistema Solar.']
+            ] },
+            neptune: { fx: ['core'], type: 'gas', age: 'Hace ~4,500 millones de años', steps: [
+                ['Nace más cerca del Sol', 'Neptuno probablemente se formó más adentro y migró hacia afuera.'],
+                ['Envoltura delgada', 'Como Urano, es un gigante de hielo con poca capa de hidrógeno y helio.'],
+                ['Empuja el cinturón de Kuiper', 'Su migración atrapó a Plutón y a miles de objetos helados en resonancia.'],
+                ['Captura a Tritón', 'Tritón, un objeto del cinturón de Kuiper, quedó atrapado en una órbita retrógrada.']
+            ] },
+            io: { fx: ['molten', 'plumes'], type: 'rocky', age: 'Hace ~4,500 millones de años', steps: [
+                ['Un mini sistema solar', 'Alrededor del joven Júpiter se forma un disco de gas y polvo: un sistema solar en miniatura.'],
+                ['Demasiado cerca para el hielo', 'El calor de Júpiter evapora el hielo cerca de él: Ío se forma de roca.'],
+                ['Resonancia 1:2:4', 'Ío, Europa y Ganímedes quedan sincronizadas y sus órbitas nunca dejan de ser elípticas.'],
+                ['Calentado por marea', 'La marea de Júpiter amasa su interior hasta fundirlo: nace el mundo más volcánico conocido.']
+            ] },
+            europa: { fx: ['frost'], type: 'rocky', age: 'Hace ~4,500 millones de años', steps: [
+                ['Disco circumjoviano', 'Europa crece dentro del disco de gas y polvo que rodeaba a Júpiter.'],
+                ['Roca con agua', 'Se forma lo bastante lejos para conservar agua: una capa de unos 100 km cubre su núcleo rocoso.'],
+                ['Marea y calor interno', 'La resonancia con Ío y Ganímedes flexiona su interior y genera calor.'],
+                ['Un océano escondido', 'Ese calor mantiene líquido un océano salado bajo la corteza de hielo: candidato a albergar vida.']
+            ] },
+            titan: { fx: ['frost'], type: 'rocky', age: 'Hace ~4,500 millones de años', steps: [
+                ['El disco de Saturno', 'Alrededor de Saturno se forma un disco rico en hielo, amoníaco y polvo.'],
+                ['La luna dominante', 'Titán acapara el 96% de toda la masa que orbita a Saturno.'],
+                ['Una atmósfera desde dentro', 'El amoníaco de su interior se transforma en nitrógeno y el metano escapa a la superficie.'],
+                ['Neblina de tolinas', 'La luz ultravioleta rompe el metano y forma tolinas: la neblina naranja que lo envuelve.']
+            ] },
+            pluto: { fx: [{ impact: { at: 0.6, size: 0.5, dir: [-1, 0.3, 0.4], debris: true } }, 'charon'], type: 'rocky', age: 'Hace ~4,500 millones de años', steps: [
+                ['El borde helado del disco', 'Más allá de Neptuno el material es una mezcla de hielo y roca a -230 °C.'],
+                ['Crecimiento lento', 'Los planetesimales se juntan muy despacio y nunca alcanzan tamaño planetario.'],
+                ['Nace Caronte', 'Un impacto gigante crea a Caronte, igual que la Luna nació de la Tierra.'],
+                ['Atrapado por Neptuno', 'La migración de Neptuno lo encierra en resonancia 3:2 dentro del cinturón de Kuiper.']
+            ] },
+            pulsar: { fx: ['supergiant'], type: 'nova', age: 'Hace ~11,000 años', steps: [
+                ['Una estrella gigante agoniza', 'Una estrella de 8 a 20 masas solares quema su combustible en solo ~10 millones de años.'],
+                ['Supernova', 'Su núcleo de hierro colapsa en menos de un segundo, rebota y la estrella explota: así nació el remanente de Vela.'],
+                ['Materia de neutrones', 'Protones y electrones se fusionan en neutrones: 1.4 masas solares en una esfera de 10 km.'],
+                ['Un faro cósmico', 'Al encogerse gira cada vez más rápido: 11 vueltas por segundo con haces de radio que barren el espacio.']
+            ] },
+            gargantua: { fx: ['spinup'], type: 'hole', age: 'Miles de millones de años', steps: [
+                ['Una semilla', 'Los agujeros negros supermasivos nacen de estrellas colapsadas o de nubes de gas que colapsan directamente.'],
+                ['Crecimiento por fusiones', 'Durante miles de millones de años devoran gas y se fusionan con otros agujeros negros.'],
+                ['Disco de acreción', 'El gas que cae gira cada vez más rápido y se calienta a millones de grados: brilla más que galaxias enteras.'],
+                ['Horizonte de sucesos', 'Millones de masas solares quedan ocultas tras un horizonte del que ni la luz escapa.']
+            ] }
+        };
+
+        const genesisVertexShader = `
+            attribute vec4 aSeed;
+            uniform float uP;
+            uniform float uMode;
+            uniform float uTime;
+            uniform float uSize;
+            uniform float uFinalR;
+            varying float vMix;
+            void main() {
+                float r0 = aSeed.x;
+                float a0 = aSeed.y;
+                float h0 = aSeed.z;
+                float rnd = aSeed.w;
+                float p = clamp(uP * (0.7 + rnd * 0.6), 0.0, 1.0);
+                float e = 1.0 - pow(1.0 - p, 3.0);
+                float ring = sqrt(max(0.0, 1.0 - h0 * h0));
+                vec3 dir = vec3(cos(a0) * ring, h0, sin(a0) * ring);
+                vec3 pos;
+                if (uMode < 0.5) {
+                    float r = mix(r0, uFinalR, e);
+                    float a = a0 + uTime * (2.4 / max(r, 0.6));
+                    pos = vec3(cos(a) * r, h0 * 0.5 * (1.0 - e), sin(a) * r);
+                } else if (uMode < 1.5) {
+                    float r = mix(r0, uFinalR, e);
+                    float a = uTime * (1.6 / max(r, 0.6)) * (0.2 + e);
+                    vec3 d = vec3(dir.x * cos(a) - dir.z * sin(a), dir.y * (1.0 - e * 0.85), dir.x * sin(a) + dir.z * cos(a));
+                    pos = d * r;
+                } else if (uMode < 2.5) {
+                    pos = dir * mix(uFinalR, r0 * 1.9, e);
+                } else if (uMode < 3.5) {
+                    float r = mix(r0 * 1.3, uFinalR, e);
+                    float a = a0 + uTime * (2.0 / max(r, 0.6)) * e;
+                    pos = vec3(cos(a) * r * ring, h0 * r * (1.0 - e * 0.92), sin(a) * r * ring);
+                } else {
+                    float r = mix(r0, uFinalR * 1.18, e);
+                    float band = floor((h0 * 0.5 + 0.5) * 11.0);
+                    float dirB = mod(band, 2.0) * 2.0 - 1.0;
+                    float a = a0 + uTime * (0.35 + e * 1.1) * dirB;
+                    pos = vec3(cos(a) * r * ring, h0 * r * mix(1.0, 0.86, e), sin(a) * r * ring);
+                }
+                vMix = rnd;
+                vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+                gl_PointSize = uSize * (0.5 + rnd) * (30.0 / max(0.5, -mv.z));
+                gl_Position = projectionMatrix * mv;
+            }
+        `;
+        const genesisFragmentShader = `
+            uniform vec3 uColorA;
+            uniform vec3 uColorB;
+            uniform float uAlpha;
+            varying float vMix;
+            void main() {
+                float d = length(gl_PointCoord - 0.5);
+                float soft = 1.0 - smoothstep(0.0, 0.5, d);
+                gl_FragColor = vec4(mix(uColorA, uColorB, vMix), soft * uAlpha);
+            }
+        `;
+
+        const GENESIS_COUNT = isCoarsePointer ? 3500 : 7000;
+        const genesisGeo = new THREE.BufferGeometry();
+        const genesisSeeds = new Float32Array(GENESIS_COUNT * 4);
+        genesisGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(GENESIS_COUNT * 3), 3));
+        genesisGeo.setAttribute('aSeed', new THREE.BufferAttribute(genesisSeeds, 4));
+        const genesisMat = new THREE.ShaderMaterial({
+            vertexShader: genesisVertexShader,
+            fragmentShader: genesisFragmentShader,
+            uniforms: {
+                uP: { value: 0 }, uMode: { value: 0 }, uTime: { value: 0 }, uSize: { value: 2.2 },
+                uFinalR: { value: 2.4 }, uAlpha: { value: 0 },
+                uColorA: { value: new THREE.Color() }, uColorB: { value: new THREE.Color() }
+            },
+            transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+        });
+        const genesisCloud = new THREE.Points(genesisGeo, genesisMat);
+        genesisCloud.frustumCulled = false;
+        genesisCloud.visible = false;
+        scene.add(genesisCloud);
+        const genesisFlash = makeGlowSprite(0xffffff, 1, 0);
+        genesisFlash.visible = false;
+        scene.add(genesisFlash);
+
+        const genesisDom = {
+            card: document.getElementById('genesis-card'),
+            kicker: document.getElementById('genesis-kicker'),
+            step: document.getElementById('genesis-step'),
+            title: document.getElementById('genesis-title'),
+            text: document.getElementById('genesis-text'),
+            bar: document.getElementById('genesis-bar')
+        };
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const genesis = { active: false, target: null, start: 0, duration: 16000, stepIdx: -1, scaled: [] };
+
+        function seedGenesis(mode, finalR) {
+            for (let i = 0; i < GENESIS_COUNT; i++) {
+                const i4 = i * 4;
+                const disk = mode === 0;
+                genesisSeeds[i4] = disk ? finalR * 1.6 + Math.pow(Math.random(), 0.7) * 12 : finalR * 2.5 + Math.random() * 10;
+                genesisSeeds[i4 + 1] = Math.random() * Math.PI * 2;
+                genesisSeeds[i4 + 2] = disk ? (Math.random() - 0.5) * 1.2 : Math.random() * 2 - 1;
+                genesisSeeds[i4 + 3] = Math.random();
+            }
+            genesisGeo.attributes.aSeed.needsUpdate = true;
+        }
+
+        function setGenesisScale(k, lateK = k) {
+            genesis.scaled.forEach(({ obj, base }) => {
+                const f = obj.userData.genesisLate ? lateK : k;
+                obj.scale.copy(base).multiplyScalar(Math.max(0.0001, f));
+            });
+        }
+
+        // Temporary actors that make each formation story different.
+        const genesisFx = new THREE.Group();
+        genesisFx.visible = false;
+        scene.add(genesisFx);
+        const DEBRIS_COUNT = 900;
+        const debrisGeo = new THREE.BufferGeometry();
+        debrisGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(DEBRIS_COUNT * 3), 3));
+        const debrisVel = new Float32Array(DEBRIS_COUNT * 3);
+        const debrisPoints = new THREE.Points(debrisGeo, new THREE.PointsMaterial({
+            map: roundDotTexture, color: 0xffb070, size: 0.16, transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, depthWrite: false
+        }));
+        debrisPoints.frustumCulled = false;
+        genesisFx.add(debrisPoints);
+
+        const impactorMat = new THREE.MeshPhongMaterial({ color: 0x8a7766, emissive: 0x3a1204, shininess: 4 });
+        const impactor = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 48), impactorMat);
+        genesisFx.add(impactor);
+
+        const moltenMat = new THREE.MeshBasicMaterial({ color: 0xff5a14, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        const moltenShell = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), moltenMat);
+        genesisFx.add(moltenShell);
+
+        const coreMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 48), new THREE.MeshPhongMaterial({ color: 0x6b5644, emissive: 0x2a0d00, shininess: 3 }));
+        genesisFx.add(coreMesh);
+
+        const supergiant = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), new THREE.MeshBasicMaterial({ color: 0xff4a1c, transparent: true, opacity: 0.95 }));
+        genesisFx.add(supergiant);
+        const supergiantGlow = makeGlowSprite(0xff5a2a, 1, 0.9);
+        genesisFx.add(supergiantGlow);
+
+        const jetMatG = new THREE.MeshBasicMaterial({ color: 0xffd08a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false });
+        const jetN = new THREE.Mesh(new THREE.ConeGeometry(0.9, 12, 32, 1, true), jetMatG);
+        jetN.position.y = 6.4; jetN.rotation.x = Math.PI;
+        const jetS = new THREE.Mesh(new THREE.ConeGeometry(0.9, 12, 32, 1, true), jetMatG);
+        jetS.position.y = -6.4;
+        const jets = new THREE.Group();
+        jets.add(jetN, jetS);
+        jets.rotation.z = 0.25;
+        genesisFx.add(jets);
+
+        const frostMat = new THREE.MeshBasicMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        const frostShell = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 48), frostMat);
+        genesisFx.add(frostShell);
+
+        const smooth01 = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+        const hasFx = (name) => genesis.fx.some(f => f === name);
+        const impactFx = () => { const f = genesis.fx.find(f => typeof f === 'object' && f.impact); return f ? f.impact : null; };
+
+        function showGenesisStep(idx) {
+            const cfg = GENESIS[genesis.target];
+            const step = cfg.steps[idx];
+            genesisDom.step.classList.add('is-swapping');
+            setTimeout(() => {
+                genesisDom.title.textContent = `${idx + 1}/4 · ${step[0]}`;
+                genesisDom.text.textContent = step[1];
+                genesisDom.step.classList.remove('is-swapping');
+            }, 160);
+        }
+
+        function startGenesis(targetId) {
+            const cfg = GENESIS[targetId];
+            if (!cfg) return;
+            if (genesis.active) stopGenesis();
+            if (state.currentTarget !== targetId) switchTarget(targetId);
+            const type = GENESIS_TYPES[cfg.type];
+            const group = targetGroups[targetId];
+            genesis.scaled = group.children
+                .filter(c => !c.userData.backdrop)
+                .map(obj => ({ obj, base: obj.scale.clone() }));
+            const mainMesh = group.children[0];
+            const finalR = mainMesh && mainMesh.geometry && mainMesh.geometry.parameters.radius
+                ? mainMesh.geometry.parameters.radius : 2.2;
+
+            seedGenesis(type.mode, finalR);
+            genesisMat.uniforms.uMode.value = type.mode;
+            genesisMat.uniforms.uFinalR.value = type.mode === 2 ? finalR * 0.6 : finalR;
+            genesisMat.uniforms.uColorA.value.set(type.colors[0]);
+            genesisMat.uniforms.uColorB.value.setRGB(...(ASTRO_TARGETS[targetId].atmoColor || [1, 1, 1]));
+            genesisMat.uniforms.uColorB.value.lerp(new THREE.Color(type.colors[1]), 0.35);
+            genesisMat.uniforms.uP.value = 0;
+            genesisMat.uniforms.uAlpha.value = 0;
+            genesisCloud.visible = true;
+
+            genesis.active = true;
+            genesis.target = targetId;
+            genesis.type = type;
+            genesis.fx = cfg.fx || [];
+            genesis.finalR = finalR;
+            genesis.baseRotZ = group.rotation.z;
+            genesisFx.visible = true;
+            genesisFx.position.copy(group.position);
+            [impactor, moltenShell, coreMesh, supergiant, supergiantGlow, jets, frostShell, debrisPoints].forEach(o => { o.visible = false; });
+            moltenShell.scale.setScalar(finalR * 1.012);
+            frostShell.scale.setScalar(finalR * 1.02);
+            coreMesh.scale.setScalar(finalR * 0.32);
+            const imp = impactFx();
+            if (imp) {
+                impactor.scale.setScalar(finalR * imp.size);
+                genesis.impDir = new THREE.Vector3(...imp.dir).normalize();
+                const contact = genesis.impDir.clone().multiplyScalar(finalR * (1 + imp.size * 0.6));
+                const pos = debrisGeo.attributes.position.array;
+                for (let i = 0; i < DEBRIS_COUNT; i++) {
+                    pos[i * 3] = contact.x; pos[i * 3 + 1] = contact.y; pos[i * 3 + 2] = contact.z;
+                    const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().add(genesis.impDir.clone().multiplyScalar(0.9)).normalize();
+                    const sp = 2 + Math.random() * 7;
+                    debrisVel[i * 3] = v.x * sp; debrisVel[i * 3 + 1] = v.y * sp; debrisVel[i * 3 + 2] = v.z * sp;
+                }
+                genesis.contact = contact;
+                debrisGeo.attributes.position.needsUpdate = true;
+            }
+            if (targetId === 'io') ioPlumes.visible = false;
+            genesis.duration = reduceMotion.matches ? 7000 : 10000;
+            genesis.start = performance.now();
+            genesis.stepIdx = -1;
+            setGenesisScale(type.mode === 2 ? 0 : 0.0001);
+
+            const cam = GENESIS_CAMERA[cfg.type] || GENESIS_CAMERA.rocky;
+            dom.descentSlider.value = cam.zoom;
+            updateRelativityTelemetry(cam.zoom);
+            genesis.cam = cam;
+            genesis.prevAutoRotate = controls.autoRotate;
+            genesis.prevAutoRotateSpeed = controls.autoRotateSpeed;
+            controls.autoRotate = !reduceMotion.matches;
+            controls.autoRotateSpeed = cam.spin * (Object.keys(GENESIS).indexOf(targetId) % 2 ? -1 : 1);
+            const off = camera.position.clone().sub(controls.target);
+            const sph = new THREE.Spherical().setFromVector3(off);
+            sph.phi = cam.phi;
+            camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(sph));
+            controls.update();
+
+            genesisDom.kicker.textContent = `GÉNESIS · ${cfg.age}`;
+            genesisDom.card.hidden = false;
+            requestAnimationFrame(() => genesisDom.card.classList.add('is-on'));
+            if (audioEngine.isPlaying) audioEngine.playTelemetryPing();
+        }
+
+        function stopGenesis() {
+            if (!genesis.active) return;
+            genesis.active = false;
+            controls.autoRotate = !!genesis.prevAutoRotate;
+            controls.autoRotateSpeed = genesis.prevAutoRotateSpeed || 2;
+            setGenesisScale(1);
+            if (genesis.target && targetGroups[genesis.target]) targetGroups[genesis.target].rotation.z = genesis.baseRotZ || 0;
+            ioPlumes.visible = true;
+            genesisFx.visible = false;
+            genesisCloud.visible = false;
+            genesisFlash.visible = false;
+            genesisDom.card.classList.remove('is-on');
+            setTimeout(() => { if (!genesis.active) genesisDom.card.hidden = true; }, 260);
+        }
+
+        function updateGenesis(elapsedTime) {
+            if (!genesis.active) return;
+            const prog = Math.min(1, (performance.now() - genesis.start) / genesis.duration);
+            const type = genesis.type;
+            const u = genesisMat.uniforms;
+            u.uTime.value = elapsedTime;
+
+            // particles: fade in, contract (or explode), fade out
+            u.uP.value = Math.min(1, Math.max(0, (prog - 0.06) / 0.72));
+            u.uAlpha.value = Math.min(1, prog / 0.08) * (1 - Math.max(0, (prog - 0.84) / 0.16)) * 0.9;
+
+            const R = genesis.finalR;
+            const group = targetGroups[genesis.target];
+
+            // the body grows out of the cloud (gas giants: rocky core first, then the envelope)
+            let growFrom = type.growFrom;
+            if (hasFx('core')) {
+                growFrom = 0.48;
+                const c = smooth01(0.18, 0.4, prog);
+                coreMesh.visible = c > 0.001 && prog < 0.75;
+                coreMesh.scale.setScalar(R * 0.32 * c);
+            }
+            const g = Math.min(1, Math.max(0, (prog - growFrom) / (type.growTo - growFrom)));
+            const lateK = hasFx('rings') ? smooth01(0.8, 0.97, prog) : (hasFx('charon') ? smooth01(0.7, 0.9, prog) : 1 - Math.pow(1 - g, 3));
+            setGenesisScale(1 - Math.pow(1 - g, 3), lateK);
+
+            // hot, molten proto-planet that cools down
+            if (hasFx('molten')) {
+                const heat = g * (1 - smooth01(0.6, 0.97, prog));
+                moltenShell.visible = heat > 0.01;
+                moltenMat.opacity = heat * 0.85;
+                moltenShell.scale.setScalar(R * 1.012 * Math.max(0.001, 1 - Math.pow(1 - g, 3)));
+            }
+            // icy moons: frost settles over the surface at the end
+            if (hasFx('frost')) {
+                const fr = smooth01(0.7, 0.85, prog) * (1 - smooth01(0.88, 1.0, prog));
+                frostShell.visible = fr > 0.01;
+                frostMat.color.set(genesis.target === 'titan' ? 0xffa040 : 0xbfe6ff);
+                frostMat.opacity = fr * 0.5;
+            }
+            // protostar bipolar jets
+            if (hasFx('jets')) {
+                const jt = smooth01(0.3, 0.42, prog) * (1 - smooth01(0.62, 0.75, prog));
+                jets.visible = jt > 0.01;
+                jetMatG.opacity = jt * 0.55;
+                jets.rotation.y = elapsedTime * 0.6;
+            }
+            // red supergiant that collapses before the supernova
+            if (hasFx('supergiant')) {
+                const life = 1 - smooth01(0.1, 0.15, prog);
+                const swell = 6 + Math.sin(elapsedTime * 2.2) * 0.25 + prog * 6;
+                supergiant.visible = life > 0.01;
+                supergiantGlow.visible = life > 0.01;
+                supergiant.scale.setScalar(swell * life);
+                supergiantGlow.scale.set(swell * 3.2 * life, swell * 3.2 * life, 1);
+                genesisCloud.visible = prog > 0.12;
+            }
+            // giant impact (Theia, Charon, the blow that tilted Uranus)
+            const imp = impactFx();
+            let impactFlash = 0;
+            if (imp) {
+                const t0 = imp.at - 0.16;
+                const k = smooth01(t0, imp.at, prog);
+                impactor.visible = prog > t0 && prog < imp.at + 0.01;
+                const far = genesis.impDir.clone().multiplyScalar(R * 9).add(new THREE.Vector3(0, R * 1.5, 0));
+                impactor.position.copy(far).lerp(genesis.contact, k * k);
+                impactFlash = Math.max(0, 1 - Math.abs(prog - imp.at) / 0.035);
+                {
+                    const dt = prog - imp.at;
+                    debrisPoints.visible = dt > 0 && dt < 0.3;
+                    if (debrisPoints.visible) {
+                        const pos = debrisGeo.attributes.position.array;
+                        const tt = dt * genesis.duration / 1000;
+                        const settle = imp.debris ? smooth01(0.08, 0.3, dt) : 0;
+                        for (let i = 0; i < DEBRIS_COUNT; i++) {
+                            const e = 1 - Math.exp(-tt * 1.6);
+                            let x = genesis.contact.x + debrisVel[i * 3] * e;
+                            let y = genesis.contact.y + debrisVel[i * 3 + 1] * e * 0.35;
+                            let z = genesis.contact.z + debrisVel[i * 3 + 2] * e;
+                            if (settle > 0) {
+                                const a = Math.atan2(z, x) + tt * 0.8;
+                                const r = Math.hypot(x, z);
+                                x = x * (1 - settle) + Math.cos(a) * r * settle;
+                                z = z * (1 - settle) + Math.sin(a) * r * settle;
+                                y *= 1 - settle;
+                            }
+                            pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+                        }
+                        debrisGeo.attributes.position.needsUpdate = true;
+                        debrisPoints.material.opacity = (1 - smooth01(0.18, 0.3, dt)) * 0.9;
+                    }
+                }
+                if (hasFx('tilt')) {
+                    group.rotation.z = (genesis.baseRotZ || 0) + (1 - smooth01(imp.at, imp.at + 0.12, prog)) * -1.6 + 0;
+                }
+            }
+            // volcanoes ignite once Io is fully formed
+            if (hasFx('plumes')) ioPlumes.visible = prog > 0.82;
+            // black hole: the disk spins up hard
+            if (hasFx('spinup')) {
+                accretionDisk.rotation.z = elapsedTime * (0.2 + smooth01(0.5, 0.95, prog) * 2.5);
+            }
+
+            // ignition / explosion / impact flash
+            const typeFlash = type.flashAt !== undefined ? Math.max(0, 1 - Math.abs(prog - type.flashAt) / 0.06) : 0;
+            const f = Math.max(typeFlash, impactFlash);
+            genesisFlash.visible = f > 0.001;
+            if (genesisFlash.visible) {
+                genesisFlash.material.opacity = f;
+                const size = (impactFlash > typeFlash ? 4 : 6) + f * (impactFlash > typeFlash ? 14 : 30);
+                genesisFlash.scale.set(size, size, 1);
+                genesisFlash.position.copy(group.position);
+                if (impactFlash > typeFlash && genesis.contact) genesisFlash.position.add(genesis.contact);
+            }
+
+            const stepIdx = Math.min(3, Math.floor(prog * 4));
+            if (stepIdx !== genesis.stepIdx) {
+                genesis.stepIdx = stepIdx;
+                showGenesisStep(stepIdx);
+            }
+            genesisDom.bar.style.transform = `scaleX(${prog.toFixed(4)})`;
+
+            if (prog >= 1) stopGenesis();
+        }
+
+        document.getElementById('genesis-btn')?.addEventListener('click', () => {
+            audioEngine.playClickTone(660, 0.08);
+            startGenesis(state.currentTarget);
+        });
+        document.getElementById('genesis-skip')?.addEventListener('click', () => {
+            audioEngine.playClickTone(440, 0.05);
+            stopGenesis();
         });
 
         const clock = new THREE.Clock();
@@ -2996,6 +4143,29 @@
                 }
             }
 
+            camera.updateMatrixWorld();
+            sharedUniforms.uSunDirView.value.copy(sunDirectionalLight.position).normalize().transformDirection(camera.matrixWorldInverse);
+            sharedUniforms.uDetail.value = Math.min(1, Math.max(0, (state.descentPercent - 35) / 55));
+
+            if (t === 'sun') {
+                prominenceBillboard.quaternion.copy(camera.quaternion);
+                prominenceGroup.rotation.z = elapsedTime * 0.02;
+                prominenceGroup.children.forEach((m, i) => {
+                    const s = 1 + Math.sin(elapsedTime * 0.6 + i * 1.7) * 0.08;
+                    m.scale.set(s, s, 1);
+                    m.material.opacity = 0.25 + Math.sin(elapsedTime * 0.9 + i) * 0.12;
+                });
+            } else if (t === 'pulsar') {
+                pulsarGlow.material.opacity = 0.55 + Math.abs(Math.sin(elapsedTime * 6.0)) * 0.45;
+            } else if (t === 'io') {
+                ioPlumes.material.opacity = 0.4 + Math.sin(elapsedTime * 1.3) * 0.15;
+                ioJupiter.rotation.y = elapsedTime * 0.05;
+            } else if (t === 'europa') {
+                europaJupiter.rotation.y = elapsedTime * 0.05;
+            } else if (t === 'pluto') {
+                charon.position.set(Math.cos(elapsedTime * 0.12) * 9.5, 1.2, Math.sin(elapsedTime * 0.12) * 9.5 - 2);
+            }
+
             const posAttr = particleGeo.attributes.position;
             const speedZ = (state.warpActive ? 0.95 : 0.08) + state.descentPercent * 0.004;
             for (let i = 0; i < particleCount; i++) {
@@ -3006,6 +4176,7 @@
             posAttr.needsUpdate = true;
 
             if (!dom.modalLaser.classList.contains('hidden')) renderRedshiftWave();
+            updateGenesis(elapsedTime);
 
             controls.update();
             renderer.render(scene, camera);
